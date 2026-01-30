@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zem | Unified Data Pipeline Framework</title>
+    <meta name="description" content="A powerful, config-driven data pipeline framework combining MCP and ZenML for high-performance data curation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav class="glass">
+        <div class="container container-nav">
+            <div class="logo">
+                <span class="logo-icon">Z</span>
+                <span class="logo-text">Zem</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="docs/index.html">Docs</a></li>
+                <li><a href="https://github.com/khaihoang/xfmr-zem" class="btn btn-nav">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="container hero-content">
+            <h1 class="animate-up">The Future of Data <span class="gradient-text">Curation</span></h1>
+            <p class="animate-up delay-1">Build, orchestrate, and visualize high-performance data pipelines with Zem. The first unified framework designed for the MCP era.</p>
+            <div class="hero-btns animate-up delay-2">
+                <a href="docs/index.html" class="btn btn-primary">Get Started</a>
+                <a href="#architecture" class="btn btn-secondary">Explore Architecture</a>
+            </div>
+            <div class="hero-code animate-up delay-3 glass">
+                <div class="code-header">
+                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    <span class="filename">pipeline.yaml</span>
+                </div>
+                <pre><code><span class="key">name</span>: <span class="string">medical_cleaning_pipeline</span>
+
+<span class="key">servers</span>:
+  <span class="key">nemo</span>: <span class="string">src/xfmr_zem/servers/nemo_curator/server.py</span>
+  <span class="key">dj</span>: <span class="string">src/xfmr_zem/servers/data_juicer/server.py</span>
+
+<span class="key">pipeline</span>:
+  - <span class="key">nemo.pii_removal</span>:
+      <span class="key">input</span>: {<span class="key">anonymize_names</span>: <span class="string">true</span>}
+  - <span class="key">dj.clean_html</span>: {}</code></pre>
+            </div>
+        </div>
+    </header>
+
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">Why choose Zem?</h2>
+            <div class="grid feature-grid">
+                <div class="card glass">
+                    <i data-lucide="layers" class="icon"></i>
+                    <h3>MCP Architecture</h3>
+                    <p>Standalone, modular servers for domain logic. Bypasses async complexity with robust stdio communication.</p>
+                </div>
+                <div class="card glass">
+                    <i data-lucide="eye" class="icon"></i>
+                    <h3>ZenML Visualization</h3>
+                    <p>Automatic tracking and visualization of every step. Wows stakeholders with beautiful pipeline graphs.</p>
+                </div>
+                <div class="card glass">
+                    <i data-lucide="settings" class="icon"></i>
+                    <h3>Config-Driven</h3>
+                    <p>No more tangled code. Define or modify complex pipelines by simply editing a YAML file.</p>
+                </div>
+                <div class="card glass">
+                    <i data-lucide="zap" class="icon"></i>
+                    <h3>Domain Ready</h3>
+                    <p>Pre-configured tools for Medical, Legal, and Finance industries out of the box.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture" class="architecture-sec">
+        <div class="container grid-2">
+            <div>
+                <h2 class="section-title left">Unified Orchestration</h2>
+                <p>Zem acts as the bridge between modular processing units (MCP Servers) and professional orchestration (ZenML). Every execution is tracked, every artifact is versioned, and every step is descriptively labeled.</p>
+                <ul class="check-list">
+                    <li><i data-lucide="check-circle"></i> Dynamic Step Naming</li>
+                    <li><i data-lucide="check-circle"></i> Seamless Subprocess Management</li>
+                    <li><i data-lucide="check-circle"></i> JSON-RPC over Standard I/O</li>
+                    <li><i data-lucide="check-circle"></i> ZenML Stack Integration</li>
+                </ul>
+            </div>
+            <div class="arch-visual glass">
+                <div class="layer layer-client">Zem Client</div>
+                <div class="connector pulse"></div>
+                <div class="layer layer-wrapper">ZenML Wrapper</div>
+                <div class="grid grid-servers">
+                    <div class="layer layer-server">NeMo Server</div>
+                    <div class="layer layer-server">DataJuicer Server</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">Zem</div>
+                <p>&copy; 2026 Zem Framework. Built for the future of AI data.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

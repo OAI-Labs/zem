@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation | Zem Framework</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="docs.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="docs-body">
+    <nav class="glass">
+        <div class="container container-nav">
+            <a href="../index.html" class="logo">
+                <span class="logo-icon">Z</span>
+                <span class="logo-text">Zem</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="https://github.com/khaihoang/xfmr-zem" class="btn btn-nav">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-container container">
+        <aside class="sidebar">
+            <ul class="sidebar-list">
+                <li class="sidebar-item active"><a href="#introduction">Introduction</a></li>
+                <li class="sidebar-item"><a href="#installation">Installation</a></li>
+                <li class="sidebar-item"><a href="#config">YAML Configuration</a></li>
+                <li class="sidebar-item"><a href="#running">Running Pipelines</a></li>
+                <li class="sidebar-item"><a href="#servers">MCP Servers</a></li>
+                <li class="sidebar-item"><a href="#zenml">ZenML Integration</a></li>
+            </ul>
+        </aside>
+
+        <main class="docs-content">
+            <section id="introduction">
+                <h1>Introduction</h1>
+                <p>Zem is a unified data pipeline framework built for high-performance data curation. It leverages the
+                    **Model Context Protocol (MCP)** to allow modularity and **ZenML** for professional-grade
+                    orchestration and visualization.</p>
+                <p>Traditionally, data pipelines are hard to manage and scale. Zem solves this by making pipelines
+                    entirely config-driven.</p>
+            </section>
+
+            <section id="installation">
+                <h1>Installation</h1>
+                <p>Zem is designed to work with <code>uv</code>, the ultra-fast Python package manager.</p>
+                <div class="code-block">
+                    <pre><code>pip install xfmr-zem</code></pre>
+                </div>
+            </section>
+
+            <section id="config">
+                <h1>YAML Configuration</h1>
+                <p>Define your pipeline steps by mapping servers to tools. Zem handles the data flow between steps.</p>
+                <div class="code-block">
+                    <pre><code>name: my_pipeline
+servers:
+  nemo: src/xfmr_zem/servers/nemo_curator/server.py
+pipeline:
+  - nemo.pii_removal:
+      input:
+        data: [{"text": "Hello World"}]</code></pre>
+                </div>
+            </section>
+
+            <section id="running">
+                <h1>Running Pipelines</h1>
+                <p>Use the <code>zem</code> CLI to run your pipelines. It automatically initializes MCP servers and
+                    tracks execution in ZenML.</p>
+                <div class="code-block">
+                    <pre><code>zem run my_config.yaml</code></pre>
+                </div>
+            </section>
+
+            <section id="servers">
+                <h1>MCP Servers</h1>
+                <p>MCP Servers are modular units that contain the actual processing logic (e.g., NeMo Curator,
+                    DataJuicer). They talk to the Zem Client over Standard I/O using JSON-RPC.</p>
+            </section>
+
+            <section id="zenml">
+                <h1>ZenML Integration</h1>
+                <p>Zem automatically converts your YAML config into a ZenML pipeline. You can visualize the results by
+                    running:</p>
+                <div class="code-block">
+                    <pre><code>uv run zenml up --port 8871</code></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
