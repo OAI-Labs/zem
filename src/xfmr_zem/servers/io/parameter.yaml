@@ -1,0 +1,10 @@
+# IO Server Configuration
+# Default settings for loading and saving data
+
+load_settings:
+  chunk_size: 1000
+  encoding: "utf-8"
+
+save_settings:
+  overwrite: true
+  encoding: "utf-8"

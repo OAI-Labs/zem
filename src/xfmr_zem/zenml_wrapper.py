@@ -94,11 +94,20 @@ def run_mcp_tool(
                     continue
              
         # tool_resp is now loaded correctly
-        
+        result = tool_resp.get("result", {})
+        if result.get("isError"):
+             # MCP standard error in result
+             err_msg = ""
+             if "content" in result:
+                 for item in result["content"]:
+                     if item.get("type") == "text":
+                         err_msg += item.get("text", "")
+             raise RuntimeError(f"MCP Tool Error (isError): {err_msg or 'Unknown error'}")
+
         if "error" in tool_resp:
-            raise RuntimeError(f"MCP Tool Error: {tool_resp['error']}")
+            raise RuntimeError(f"MCP Tool Error (jsonrpc-error): {tool_resp['error']}")
             
-        return tool_resp["result"]
+        return result
 
     finally:
         process.terminate()
@@ -122,20 +131,25 @@ def mcp_generic_step(
     # Merge previous output into tool_args if present
     if previous_output is not None:
         print(f"[{server_name}] Received input from previous step (type: {type(previous_output)})")
-        # Logic to map previous output to tool args
-        # 1. If previous output is a dict, merge it (priority to manual args)
+        
+        # Smart Reference Detection
+        is_reference = False
+        if isinstance(previous_output, dict) and "path" in previous_output:
+             is_reference = True
+             print(f"[{server_name}] Detected file reference: {previous_output['path']}")
+        
+        # 1. If previous output is a dict
         if isinstance(previous_output, dict):
-            # We want current tool_args to override previous_output keys if collision?
-            # Usually strict update. 
-            # But deep merge might be better. 
-            # Let's do implicit merge: tool_args + previous_output
-            # usage: previous output provided 'data', config provided 'threshold'
-            merged = previous_output.copy()
-            merged.update(tool_args)
-            tool_args = merged
+            if is_reference:
+                # Chế độ Big Data: Chỉ truyền vào 'data' để tránh lỗi Unexpected Keyword Argument
+                tool_args["data"] = previous_output
+            else:
+                # Chế độ thường: Merge các field (ví dụ kết quả từ một step xử lý metadata)
+                for k, v in previous_output.items():
+                    if k not in tool_args:
+                        tool_args[k] = v
         else:
-            # 2. If previous output is list/other, assume it's the 'data' argument
-            # This is specific to our Zem data pipeline convention
+            # 2. Nếu là list hoặc kiểu khác, mặc định gán vào 'data'
             tool_args['data'] = previous_output
 
     command = server_config.get("command", "python")
@@ -159,11 +173,17 @@ def mcp_generic_step(
                 item = content[0]
                 if item.get("type") == "text":
                     text = item.get("text", "")
-                    # print(f"[{server_name}] Text Output: {text[:200]}...") # Truncate log
                     try:
                         output_data = json.loads(text)
                     except:
-                        output_data = {"raw_output": text}
+                        try:
+                            import ast
+                            output_data = ast.literal_eval(text)
+                            if not isinstance(output_data, (dict, list)):
+                                raise ValueError("Not a dict or list")
+                        except:
+                            print(f"[{server_name}] DEBUG: Failed to parse tool output as JSON or Python literal. Raw text: {text[:500]}...")
+                            output_data = {"raw_output": text}
         else:
              # Fallback if tool returns raw data (unlikely strict MCP but possible in custom impl)
              output_data = result_data if isinstance(result_data, dict) else {"raw": str(result_data)}

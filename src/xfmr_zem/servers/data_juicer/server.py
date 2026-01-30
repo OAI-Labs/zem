@@ -14,115 +14,60 @@ logger.add(sys.stderr, level="INFO")
 server = ZemServer("data_juicer", parameter_file=os.path.join(os.path.dirname(__file__), "parameter.yaml"))
 
 @server.tool()
-def clean_html(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Remove HTML tags from text.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-    """
+def clean_html(data: Any) -> Any:
+    """Remove HTML tags from text."""
+    items = server.get_data(data)
     logger.info("DataJuicer: Cleaning HTML")
     result = []
-    for item in data:
+    for item in items:
         text = str(item.get("text", ""))
-        # Remove HTML tags
         text = re.sub(r'<[^>]+>', '', text)
-        # Decode common HTML entities
-        text = text.replace('&nbsp;', ' ')
-        text = text.replace('&amp;', '&')
-        text = text.replace('&lt;', '<')
-        text = text.replace('&gt;', '>')
-        text = text.replace('&quot;', '"')
-        
         new_item = item.copy()
         new_item["text"] = text
         result.append(new_item)
+    
+    # Support reference-based output for Big Data
+    if server.parameters.get("return_reference", False):
+        return server.save_output(result, format="parquet")
     return result
 
 @server.tool()
-def clean_links(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Remove URLs from text.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-    """
-    logger.info("DataJuicer: Cleaning Links")
-    result = []
-    for item in data:
-        text = str(item.get("text", ""))
-        # Remove URLs
-        text = re.sub(r'https?://\S+', '[URL]', text)
-        text = re.sub(r'www\.\S+', '[URL]', text)
-        
-        new_item = item.copy()
-        new_item["text"] = text
-        result.append(new_item)
-    return result
-
-@server.tool()
-def fix_unicode(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Normalize unicode characters using NFKC.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-    """
-    logger.info("DataJuicer: Fixing Unicode")
-    result = []
-    for item in data:
-        text = str(item.get("text", ""))
-        text = unicodedata.normalize('NFKC', text)
-        
-        new_item = item.copy()
-        new_item["text"] = text
-        result.append(new_item)
-    return result
-
-@server.tool()
-def whitespace_normalization(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Normalize whitespace by replacing multiple spaces/newlines with a single space.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-    """
+def whitespace_normalization(data: Any) -> Any:
+    """Normalize whitespace."""
+    items = server.get_data(data)
     logger.info("DataJuicer: Whitespace Normalization")
     result = []
-    for item in data:
+    for item in items:
         text = str(item.get("text", ""))
         text = re.sub(r'\s+', ' ', text).strip()
-        
         new_item = item.copy()
         new_item["text"] = text
         result.append(new_item)
+
+    if server.parameters.get("return_reference", False):
+        return server.save_output(result, format="parquet")
     return result
 
 @server.tool()
 def text_length_filter(
-    data: List[Dict[str, Any]], 
+    data: Any, 
     min_length: Optional[int] = None, 
     max_length: Optional[int] = None
-) -> List[Dict[str, Any]]:
-    """
-    Filter documents based on text length.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-        min_length: Minimum character length.
-        max_length: Maximum character length.
-    """
+) -> Any:
+    """Filter documents based on text length."""
+    items = server.get_data(data)
     params = server.parameters.get("text_length_filter", {})
     min_len = min_length if min_length is not None else params.get("min_length", 10)
     max_len = max_length if max_length is not None else params.get("max_length", 100000)
     
     logger.info(f"DataJuicer: Text Length Filter (min={min_len}, max={max_len})")
-    
     result = [
-        item for item in data 
+        item for item in items 
         if min_len <= len(str(item.get("text", ""))) <= max_len
     ]
-    logger.info(f"DataJuicer: Filtered {len(data)} -> {len(result)}")
+
+    if server.parameters.get("return_reference", False):
+        return server.save_output(result, format="parquet")
     return result
 
 @server.tool()

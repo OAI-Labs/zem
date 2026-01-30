@@ -82,6 +82,63 @@ class ZemServer(FastMCP):
     # Removed custom tool decorator to fix multiple values for argument 'name' error
     # Inherit directly from FastMCP.tool
 
+    def get_data(self, data: Any) -> List[Dict[str, Any]]:
+        """
+        Standardized way to get data, supporting both direct lists and file references.
+        """
+        import os
+        from loguru import logger
+        if isinstance(data, list):
+            return data
+        
+        if isinstance(data, dict) and "path" in data:
+            path = data["path"]
+            ext = os.path.splitext(path)[1].lower()
+            
+            logger.info(f"Server {self.name}: Loading reference {path}")
+            if ext == ".jsonl":
+                import json
+                with open(path, "r", encoding="utf-8") as f:
+                    return [json.loads(line) for line in f if line.strip()]
+            elif ext == ".csv":
+                import pandas as pd
+                return pd.read_csv(path).to_dict(orient="records")
+            elif ext == ".parquet":
+                import pandas as pd
+                return pd.read_parquet(path).to_dict(orient="records")
+            else:
+                raise ValueError(f"Unsupported reference extension: {ext}")
+        
+        return data
+
+    def save_output(self, data: Any, format: str = "parquet") -> Dict[str, Any]:
+        """
+        Saves output to a temporary file and returns a reference.
+        Prevents large data from being sent over JSON-RPC.
+        """
+        import uuid
+        import os
+        from loguru import logger
+        
+        base_dir = "/tmp/zem_artifacts"
+        os.makedirs(base_dir, exist_ok=True)
+        
+        file_id = str(uuid.uuid4())[:8]
+        path = os.path.join(base_dir, f"{self.name}_output_{file_id}.{format}")
+        
+        logger.info(f"Server {self.name}: Saving result to reference {path}")
+        
+        if format == "parquet":
+            import pandas as pd
+            pd.DataFrame(data).to_parquet(path, index=False)
+        elif format == "jsonl":
+            import json
+            with open(path, "w", encoding="utf-8") as f:
+                for item in data:
+                    f.write(json.dumps(item, ensure_ascii=False) + "\n")
+        
+        return {"path": path, "type": format, "size": os.path.getsize(path)}
+
     def run(self, transport: str = "stdio"):
         """Run the server."""
         super().run(transport=transport, show_banner=False)

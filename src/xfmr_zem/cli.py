@@ -61,6 +61,18 @@ def operators():
     dj_table.add_row("language_filter", "Heuristic-based language filtering")
     dj_table.add_row("document_simhash_dedup", "Simple SimHash-based deduplication")
     console.print(dj_table)
+    
+    # IO Tools
+    console.print("\n[bold magenta]IO Server Tools (File Handling):[/bold magenta]")
+    io_table = Table(show_header=True, header_style="bold cyan")
+    io_table.add_column("Tool Name")
+    io_table.add_column("Description")
+    
+    io_table.add_row("load_jsonl", "Load data from JSONL file")
+    io_table.add_row("save_jsonl", "Save data to JSONL file")
+    io_table.add_row("load_csv", "Load data from CSV file")
+    io_table.add_row("save_csv", "Save data to CSV file")
+    console.print(io_table)
 
 
 @main.command()
