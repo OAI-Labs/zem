@@ -1,0 +1,37 @@
+name: nemo_full_stack_demo
+
+servers:
+  io: ../../src/xfmr_zem/servers/io/server.py
+  nemo: ../../src/xfmr_zem/servers/nemo_curator/server.py
+
+pipeline:
+  # 1. Load data
+  - io.load_parquet:
+      input:
+        path: "data/dup_data_large.parquet"
+        return_reference: true
+  
+  # 2. Unicode Normalization
+  - nemo.unicode_normalization: {}
+
+  # 3. Language ID
+  - nemo.language_identification: {}
+
+  # 4. PII Removal (Email, Phone, IP, Credit Card)
+  - nemo.pii_removal: {}
+
+  # 5. Heuristic Filtering (Filter out short docs or non-alpha content)
+  - nemo.heuristic_filter:
+      input:
+        min_words: 10
+        max_non_alpha_ratio: 0.3
+
+  # 6. Exact Deduplication
+  - nemo.exact_deduplication:
+      input:
+        text_column: "text"
+
+  # 7. Save Final Result
+  - io.save_parquet:
+      input:
+        path: "data/nemo_full_stack_result.parquet"
