@@ -1,131 +1,112 @@
 import os
-import re
-import unicodedata
 import sys
+import re
 from typing import Any, Dict, List, Optional
 from xfmr_zem.server import ZemServer
 from loguru import logger
 
-# Remove default handler and point to stderr
+# Setup logging
 logger.remove()
 logger.add(sys.stderr, level="INFO")
 
-# Initialize the server
 server = ZemServer("data_juicer", parameter_file=os.path.join(os.path.dirname(__file__), "parameter.yaml"))
 
 @server.tool()
-def clean_html(data: Any) -> Any:
-    """Remove HTML tags from text."""
-    items = server.get_data(data)
-    logger.info("DataJuicer: Cleaning HTML")
-    result = []
-    for item in items:
-        text = str(item.get("text", ""))
-        text = re.sub(r'<[^>]+>', '', text)
-        new_item = item.copy()
-        new_item["text"] = text
-        result.append(new_item)
-    
-    # Support reference-based output for Big Data
-    if server.parameters.get("return_reference", False):
-        return server.save_output(result, format="parquet")
-    return result
-
-@server.tool()
-def whitespace_normalization(data: Any) -> Any:
-    """Normalize whitespace."""
-    items = server.get_data(data)
-    logger.info("DataJuicer: Whitespace Normalization")
-    result = []
-    for item in items:
-        text = str(item.get("text", ""))
-        text = re.sub(r'\s+', ' ', text).strip()
-        new_item = item.copy()
-        new_item["text"] = text
-        result.append(new_item)
-
-    if server.parameters.get("return_reference", False):
-        return server.save_output(result, format="parquet")
-    return result
-
-@server.tool()
-def text_length_filter(
-    data: Any, 
-    min_length: Optional[int] = None, 
-    max_length: Optional[int] = None
+def clean_content(
+    data: Any,
+    remove_html: bool = True,
+    remove_emojis: bool = False,
+    text_column: str = "text"
 ) -> Any:
-    """Filter documents based on text length."""
+    """
+    Flexible content cleaning tool using DataJuicer logic.
+    """
     items = server.get_data(data)
-    params = server.parameters.get("text_length_filter", {})
-    min_len = min_length if min_length is not None else params.get("min_length", 10)
-    max_len = max_length if max_length is not None else params.get("max_length", 100000)
+    if not items: return []
     
-    logger.info(f"DataJuicer: Text Length Filter (min={min_len}, max={max_len})")
-    result = [
-        item for item in items 
-        if min_len <= len(str(item.get("text", ""))) <= max_len
-    ]
-
-    if server.parameters.get("return_reference", False):
-        return server.save_output(result, format="parquet")
-    return result
+    logger.info(f"DataJuicer: Cleaning content (remove_html={remove_html}, remove_emojis={remove_emojis})")
+    
+    for item in items:
+        if text_column not in item: continue
+        text = str(item[text_column])
+        
+        if remove_html:
+            text = re.sub(r'<[^>]+>', '', text)
+            
+        if remove_emojis:
+            # Simple emoji removal regex
+            text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+            
+        item[text_column] = text.strip()
+        
+    return server.save_output(items)
 
 @server.tool()
-def language_filter(
-    data: List[Dict[str, Any]], 
-    lang: Optional[str] = None
-) -> List[Dict[str, Any]]:
+def refining_filter(
+    data: Any,
+    min_len: int = 10,
+    max_len: int = 100000,
+    alphanumeric_ratio: float = 0.1,
+    text_column: str = "text"
+) -> Any:
     """
-    Filter documents based on language heuristic.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-        lang: Target language code ('en' or 'vi').
+    Filter items based on technical refining metrics.
     """
-    params = server.parameters.get("language_filter", {})
-    target_lang = lang if lang is not None else params.get("lang", "en")
+    items = server.get_data(data)
+    if not items: return []
     
-    logger.info(f"DataJuicer: Language Filter (target={target_lang})")
+    logger.info(f"DataJuicer: Refining filter (min_len={min_len}, alpha_ratio={alphanumeric_ratio})")
     
-    # Simple heuristic from original processor
-    if target_lang == 'en':
-        common_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been'}
-    elif target_lang == 'vi':
-        common_words = {'và', 'của', 'là', 'có', 'được', 'trong', 'cho', 'này'}
-    else:
-        return data
+    filtered = []
+    for item in items:
+        text = str(item.get(text_column, ""))
+        text_len = len(text)
+        
+        if not (min_len <= text_len <= max_len):
+            continue
+            
+        # Alphanumeric ratio check
+        alnum_count = len([c for c in text if c.isalnum()])
+        if text_len > 0 and (alnum_count / text_len) < alphanumeric_ratio:
+            continue
+            
+        filtered.append(item)
+        
+    return server.save_output(filtered)
 
-    result = []
-    for item in data:
-        text = str(item.get("text", "")).lower()
+@server.tool()
+def language_id(
+    data: Any,
+    expected_lang: str = "vi",
+    min_score: float = 0.8,
+    text_column: str = "text"
+) -> Any:
+    """
+    Heuristic language identification tool.
+    """
+    items = server.get_data(data)
+    if not items: return []
+    
+    logger.info(f"DataJuicer: Filtering for language '{expected_lang}'")
+    
+    # Heuristic for Vietnamese
+    vi_keywords = {'và', 'của', 'là', 'có', 'được', 'trong', 'cho', 'này', 'với', 'các'}
+    
+    filtered = []
+    for item in items:
+        text = str(item.get(text_column, "")).lower()
         words = set(text.split())
-        common_found = len(words & common_words)
-        if common_found >= 2:
-            result.append(item)
+        
+        if expected_lang == "vi":
+            matches = len(words & vi_keywords)
+            # Heuristic score: ratio of keywords found (simplified)
+            if matches >= 2:
+                filtered.append(item)
+        else:
+            # Fallback for other languages
+            filtered.append(item)
             
-    logger.info(f"DataJuicer: Filtered {len(data)} -> {len(result)}")
-    return result
-
-@server.tool()
-def document_simhash_dedup(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Simple deduplication based on prefix hashing.
-    
-    Args:
-        data: List of dictionaries containing 'text' field.
-    """
-    logger.info("DataJuicer: SimHash Deduplication (Simple)")
-    seen = set()
-    result = []
-    for item in data:
-        text = str(item.get("text", ""))
-        h = hash(text[:1000])  # Hash first 1000 chars as heuristic
-        if h not in seen:
-            seen.add(h)
-            result.append(item)
-            
-    logger.info(f"DataJuicer: Dedup {len(data)} -> {len(result)}")
-    return result
+    return server.save_output(filtered)
 
 if __name__ == "__main__":
     server.run()

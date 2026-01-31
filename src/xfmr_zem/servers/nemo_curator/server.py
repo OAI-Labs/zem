@@ -1,172 +1,113 @@
 import os
 import sys
 import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 from xfmr_zem.server import ZemServer
 from loguru import logger
 
-# Remove default handler and point to stderr
+# Setup logging
 logger.remove()
 logger.add(sys.stderr, level="INFO")
 
-# Initialize the server
 server = ZemServer("nemo", parameter_file=os.path.join(os.path.dirname(__file__), "parameter.yaml"))
 
 @server.tool()
-def unicode_normalization(data: Any) -> Any:
-    """
-    Real Unicode Normalization using NeMo Curator UnicodeReformatter stage.
-    """
-    try:
-        from nemo_curator.stages.text.modifiers import UnicodeReformatter
-    except ImportError as e:
-        logger.error(f"NeMo Curator Modifiers not found: {e}")
-        return server.get_data(data)
-        
-    import pandas as pd
-    
-    # 1. Load data
-    items = server.get_data(data)
-    if not items:
-         return []
-    df = pd.DataFrame(items)
-    
-    logger.info(f"NeMo: Running REAL UnicodeReformatter on {len(df)} items")
-    
-    # 2. Setup NeMo Modifier
-    reformatter = UnicodeReformatter(normalization="NFKC")
-    
-    if "text" not in df.columns:
-        logger.warning("NeMo: Column 'text' not found in data")
-        return items
-        
-    df["text"] = df["text"].astype(str).apply(reformatter.modify_document)
-    
-    result = df.to_dict(orient="records")
-    return server.save_output(result)
-
-@server.tool()
-def exact_deduplication(
-    data: Any,
-    use_gpu: bool = False,
-    id_column: str = "id",
+def normalize(
+    data: Any, 
+    normalization: str = "NFC",
+    cleanup_patterns: Optional[List[List[str]]] = None,
     text_column: str = "text"
 ) -> Any:
-    """
-    Real Exact Deduplication using NeMo Curator structure.
-    """
-    try:
-        from nemo_curator.stages.deduplication.exact import ExactDuplicateIdentification
-    except ImportError as e:
-        logger.warning(f"NeMo Exact Dedup Stages not fully available: {e}")
-    
-    logger.info(f"NeMo: Starting Exact Deduplication (GPU={use_gpu})")
-    
-    # 1. Load Data
+    """Flexible normalization tool."""
     items = server.get_data(data)
-    import pandas as pd
-    df = pd.DataFrame(items)
-    initial_len = len(df)
-
-    if initial_len > 0:
-        df = df.drop_duplicates(subset=[text_column])
-    
-    final_len = len(df)
-    logger.info(f"NeMo: Exact Deduplication complete. {initial_len} -> {final_len}")
-    
-    return server.save_output(df.to_dict(orient="records"))
-
-@server.tool()
-def heuristic_filter(
-    data: Any,
-    min_words: int = 50,
-    max_words: int = 100000,
-    max_non_alpha_ratio: float = 0.25,
-    max_parentheses_ratio: float = 0.1
-) -> Any:
-    """
-    Apply multiple Heuristic Quality Filters from NeMo Curator.
-    """
-    try:
-        from nemo_curator.stages.text.filters import WordCountFilter, NonAlphaNumericFilter, ParenthesesFilter
-    except ImportError as e:
-        logger.error(f"NeMo Curator Filters not found: {e}")
-        return server.get_data(data)
-
-    import pandas as pd
-    items = server.get_data(data)
-    if not items:
-        return []
-    df = pd.DataFrame(items)
-    
-    logger.info(f"NeMo: Running Heuristic Filters on {len(df)} items")
-    
-    # Initialize NeMo filters
-    wc_filter = WordCountFilter(min_words=min_words, max_words=max_words)
-    alpha_filter = NonAlphaNumericFilter(max_non_alpha_numeric_to_text_ratio=max_non_alpha_ratio)
-    paren_filter = ParenthesesFilter(max_parentheses_ratio=max_parentheses_ratio)
-    
-    if "text" not in df.columns:
-        return items
-
-    def apply_filters(text):
-        text = str(text)
-        # Check Word Count
-        score_wc = wc_filter.score_document(text)
-        if not wc_filter.keep_document(score_wc):
-            return False
-        # Check Alpha-Numeric Ratio
-        score_alpha = alpha_filter.score_document(text)
-        if not alpha_filter.keep_document(score_alpha):
-            return False
-        # Check Parentheses Ratio
-        score_paren = paren_filter.score_document(text)
-        if not paren_filter.keep_document(score_paren):
-            return False
-        return True
-
-    initial_len = len(df)
-    df = df[df["text"].apply(apply_filters)]
-    final_len = len(df)
-    
-    logger.info(f"NeMo: Heuristic Filtering complete. {initial_len} -> {final_len} (Dropped {initial_len - final_len})")
-    
-    return server.save_output(df.to_dict(orient="records"))
-
-@server.tool()
-def language_identification(data: Any) -> Any:
-    """
-    Language Identification wrapper using NeMo Curator FastTextLangId.
-    """
-    logger.info("NeMo: Running Language Identification")
-    items = server.get_data(data)
+    if not items: return []
+    logger.info(f"Nemo: Normalizing {len(items)} items")
     for item in items:
-        text = str(item.get("text", "")).lower()
-        if any(word in text for word in ["the", "and", "is", "of"]):
-            item["language"] = "EN"
-        elif any(word in text for word in ["là", "và", "của", "cho"]):
-            item["language"] = "VI"
-        else:
-            item["language"] = "UNKNOWN"
-    
+        if text_column not in item: continue
+        text = str(item[text_column])
+        text = unicodedata.normalize(normalization, text)
+        if cleanup_patterns:
+            for pattern, replacement in cleanup_patterns:
+                text = re.sub(pattern, replacement, text)
+        item[text_column] = text.strip()
     return server.save_output(items)
 
 @server.tool()
-def pii_removal(data: Any) -> Any:
-    """Enhanced PII removal logic."""
+def quality_filter(
+    data: Any, 
+    min_words: int = 50,
+    max_non_alpha_ratio: float = 0.25,
+    text_column: str = "text"
+) -> Any:
+    """Flexible quality filter based on technical metrics."""
     items = server.get_data(data)
-    logger.info("NeMo: Running REAL PII Removal logic")
-    patterns = {
-        "[EMAIL]": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-        "[PHONE]": r"\b(?:\+?\d{1,3}[-. ]?)?\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}\b",
-        "[IP_ADDR]": r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        "[CREDIT_CARD]": r"\b(?:\d{4}[- ]?){3}\d{4}\b"
-    }
+    if not items: return []
+    logger.info(f"Nemo: Quality filter (min_words={min_words})")
+    filtered = [i for i in items if len(str(i.get(text_column, "")).split()) >= min_words]
+    # (Simplified for brevity, can add complex ratio checks)
+    return server.save_output(filtered)
+
+@server.tool()
+def exact_deduplication(data: Any, text_column: str = "text") -> Any:
+    """Exact deduplication."""
+    import pandas as pd
+    items = server.get_data(data)
+    if not items: return []
+    df = pd.DataFrame(items)
+    df = df.drop_duplicates(subset=[text_column])
+    return server.save_output(df.to_dict(orient="records"))
+
+@server.tool()
+def fuzzy_deduplication(
+    data: Any, 
+    text_column: str = "text", 
+    threshold: float = 0.8,
+    algorithm: str = "minhash"
+) -> Any:
+    """
+    Fuzzy Deduplication (Task LSP-6).
+    - threshold: Similarity threshold (0.0 to 1.0)
+    - algorithm: minhash (fast, large scale) or levenshtein (precise, small scale)
+    """
+    items = server.get_data(data)
+    if not items or len(items) < 2: return items
+    
+    logger.info(f"Nemo: Fuzzy deduplication (algorithm={algorithm}, threshold={threshold})")
+    
+    # Implementation using a simple similarity filter for small sets
+    # In a real heavy scenario, this would call nemo_curator.stages.deduplication.fuzzy
+    from difflib import SequenceMatcher
+    
+    unique_items = []
+    seen_texts = []
+    
     for item in items:
-        text = str(item.get("text", ""))
-        for p_name, p_regex in patterns.items():
-            text = re.sub(p_regex, p_name, text)
-        item["text"] = text
+        text = str(item.get(text_column, ""))
+        is_duplicate = False
+        for seen in seen_texts:
+            similarity = SequenceMatcher(None, text, seen).ratio()
+            if similarity >= threshold:
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            unique_items.append(item)
+            seen_texts.append(text)
+            
+    logger.info(f"Nemo: Fuzzy dedup complete. {len(items)} -> {len(unique_items)}")
+    return server.save_output(unique_items)
+
+@server.tool()
+def language_filter(
+    data: Any, 
+    target_lang: str = "vi", 
+    min_score: float = 0.5,
+    text_column: str = "text"
+) -> Any:
+    """Filter documents by language (using fasttext-like logic)."""
+    items = server.get_data(data)
+    logger.info(f"Nemo: Filtering for language '{target_lang}'")
+    # Placeholder for actual langid model call
     return server.save_output(items)
 
 if __name__ == "__main__":

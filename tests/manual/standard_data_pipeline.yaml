@@ -1,0 +1,54 @@
+name: standard_data_processing_pipeline
+
+# 1. Khai báo các MCP servers độc lập (Solid Architecture)
+servers:
+  nemo: ../../src/xfmr_zem/servers/nemo_curator/server.py
+  dj: ../../src/xfmr_zem/servers/data_juicer/server.py
+  instr: ../../src/xfmr_zem/servers/instruction_gen/server.py
+
+# 2. Định nghĩa chuỗi các bước xử lý (Technical-driven)
+pipeline:
+  # --- GIAI ĐOẠN 1: CLEANING (DataJuicer) ---
+  - dj.clean_content:
+      input:
+        remove_html: true
+        remove_emojis: true
+        data:
+          - text: "<html>Luật số: 01/2020/NĐ-CP 😊</html>   về xử phạt hành chính."
+          - text: "Văn bản trùng lặp..."
+          - text: "Văn bản trùng lặp..."
+
+  # --- GIAI ĐOẠN 2: NORMALIZATION (NeMo Curator) ---
+  - nemo.normalize:
+      input:
+        normalization: "NFC"
+        cleanup_patterns:
+          - ["\\x00|\\u200b|\\ufeff", ""] 
+          - ["\\s+", " "]
+
+  # --- GIAI ĐOẠN 3: TECHNICAL FILTERING (DataJuicer) ---
+  - dj.refining_filter:
+      input:
+        min_len: 20
+        alphanumeric_ratio: 0.2
+  
+  - dj.language_id:
+      input:
+        expected_lang: "vi"
+
+  # --- GIAI ĐOẠN 4: DEDUPLICATION (NeMo Curator) ---
+  - nemo.fuzzy_deduplication:
+      input:
+        threshold: 0.90
+        algorithm: "levenshtein"
+
+  # --- GIAI ĐOẠN 5: KNOWLEDGE EXTRACTION (InstructionGen) ---
+  - instr.complexity_scorer:
+      input:
+        text_column: "text"
+
+  - instr.generate_qa_pairs:
+      input:
+        base_url: "http://localhost:8000/v1"
+        num_pairs: 3
+        model: "vinallm-7b"

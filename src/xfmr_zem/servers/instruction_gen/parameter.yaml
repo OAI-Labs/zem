@@ -1,0 +1,12 @@
+# Technical Parameters for Instruction Generation Server
+# These are default technical values. Override them in your pipeline YAML.
+
+generate_qa_pairs:
+  base_url: "http://localhost:8000/v1"
+  model: "default"
+  num_pairs: 3
+  text_column: "text"
+  prompt_template: "Dựa trên văn bản pháp luật sau, hãy tạo {num_pairs} cặp Câu hỏi và Trả lời chi tiết. Trả về định dạng JSON list: [{{'q': '...', 'a': '...'}}]. Văn bản: {text}"
+
+complexity_scorer:
+  text_column: "text"

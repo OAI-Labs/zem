@@ -1,0 +1,22 @@
+name: full_solid_pipeline_test
+
+servers:
+  nemo: ../../src/xfmr_zem/servers/nemo_curator/server.py
+  instr: ../../src/xfmr_zem/servers/instruction_gen/server.py
+
+pipeline:
+  - nemo.normalize:
+      input:
+        normalization: "NFC"
+        data:
+          - text: "Văn bản pháp luật về xử phạt vi phạm hành chính 2026."
+          - text: "Văn bản pháp luật về xử phạt vi phạm hành chính 2026 (Duplicate)."
+  - nemo.fuzzy_deduplication:
+      input:
+        threshold: 0.85
+  - instr.complexity_scorer:
+      input: {}
+  - instr.generate_qa_pairs:
+      input:
+        num_pairs: 2
+        model: "gemini-1.5-flash"

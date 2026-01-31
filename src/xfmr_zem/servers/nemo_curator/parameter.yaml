@@ -1,17 +1,17 @@
-# NeMo Curator Server Configuration
-# Defaults extracted from nemo_processor.py
+# Technical Parameters for Nemo Curator Server
+# These are default technical values. Override them in your pipeline YAML.
 
-# Fuzzy Deduplication
-threshold: 0.8
+normalize:
+  normalization: "NFC"
+  text_column: "text"
+  cleanup_patterns: []
 
-# Quality Filter
-min_word_count: 50
-max_word_count: 10000
+quality_filter:
+  min_words: 50
+  max_non_alpha_ratio: 0.25
+  text_column: "text"
 
-# PII Removal
-anonymize_names: true
-anonymize_dates: true
-remove_phi: false
-
-# Language ID
-target_language: "en"
+deduplicate:
+  text_column: "text"
+  method: "exact"
+  threshold: 0.85

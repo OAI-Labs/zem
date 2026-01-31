@@ -1,17 +1,17 @@
-name: data_juicer_server
-description: MCP Server for DataJuicer-inspired text processing operations.
-version: 0.1.0
+# Technical Parameters for DataJuicer Server
 
-# Default parameters for tools
-parameters:
-  text_length_filter:
-    min_length: 10
-    max_length: 100000
-  word_num_filter:
-    min_words: 5
-    max_words: 10000
-  special_char_filter:
-    max_special_char_ratio: 0.3
-  language_filter:
-    lang: en
-    min_score: 0.8
+clean_content:
+  remove_html: true
+  remove_emojis: false
+  text_column: "text"
+
+refining_filter:
+  min_len: 10
+  max_len: 100000
+  alphanumeric_ratio: 0.1
+  text_column: "text"
+
+language_id:
+  expected_lang: "vi"
+  min_score: 0.8
+  text_column: "text"
