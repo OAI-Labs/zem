@@ -83,5 +83,10 @@ class ParallelLocalOrchestratorFlavor(BaseOrchestratorFlavor):
         return ParallelLocalOrchestratorConfig
 
     @property
+    def logo_url(self) -> str:
+        """A URL to represent the flavor in the dashboard."""
+        return "https://public-flavor-logos.s3.eu-central-1.amazonaws.com/orchestrator/local.png"
+
+    @property
     def implementation_class(self) -> Type[ParallelLocalOrchestrator]:
         return ParallelLocalOrchestrator
