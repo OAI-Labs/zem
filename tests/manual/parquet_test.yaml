@@ -1,0 +1,15 @@
+name: parquet_support_test
+
+servers:
+  dj: src/xfmr_zem/servers/data_juicer/server.py
+
+pipeline:
+  - name: save_parquet
+    dj.clean_content:
+      input:
+        data: [{"text": "Persist this to parquet"}]
+  
+  - name: load_parquet
+    dj.clean_content:
+      input:
+        data: "$save_parquet" # This will pass a dict with path to a .parquet file

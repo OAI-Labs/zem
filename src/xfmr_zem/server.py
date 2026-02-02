@@ -116,7 +116,27 @@ class ZemServer(FastMCP):
                 return [data]
         
         if isinstance(data, str):
-            # Might be raw text or JSON string
+            # 1. URL/Cloud URI or Local Path
+            is_uri = data.startswith(("http", "s3://", "gs://"))
+            if is_uri or os.path.exists(data):
+                ext = os.path.splitext(data)[1].lower()
+                logger.debug(f"Server {self.name}: Loading data from {data}")
+                try:
+                    import pandas as pd
+                    if ext == ".parquet":
+                        return pd.read_parquet(data).to_dict(orient="records")
+                    elif ext == ".csv":
+                        return pd.read_csv(data).to_dict(orient="records")
+                    elif ext == ".jsonl":
+                        if is_uri:
+                            return pd.read_json(data, lines=True).to_dict(orient="records")
+                        import json
+                        with open(data, "r", encoding="utf-8") as f:
+                            return [json.loads(line) for line in f if line.strip()]
+                except Exception as e:
+                    logger.error(f"Error loading data from {data}: {e}")
+            
+            # 2. Treat as raw text or JSON string
             try:
                 import json
                 parsed = json.loads(data)

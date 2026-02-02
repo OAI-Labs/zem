@@ -1,0 +1,17 @@
+name: caching_behavior_test
+
+servers:
+  dj: src/xfmr_zem/servers/data_juicer/server.py
+
+pipeline:
+  - name: cached_step
+    cache: true
+    dj.clean_content:
+      input:
+        data: [{"text": "Should be cached"}]
+  
+  - name: non_cached_step
+    cache: false
+    dj.clean_content:
+      input:
+        data: "This step should run every time."

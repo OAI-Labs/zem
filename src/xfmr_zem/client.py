@@ -69,7 +69,11 @@ class PipelineClient:
                 package_root = Path(__file__).parent.resolve()
                 abs_path = (package_root / path_str / "server.py").resolve()
             else:
+                # Try relative to config file, then relative to project root
                 abs_path = (self.config_path.parent / path_str).resolve()
+                if not abs_path.exists():
+                    project_root = Path(__file__).parent.parent.parent.resolve()
+                    abs_path = (project_root / path_str).resolve()
             
             env = os.environ.copy()
             src_path = str(Path(__file__).parent.parent.resolve())
@@ -123,9 +127,16 @@ class PipelineClient:
                     # Check for name at top level or inside the tool dict
                     step_alias = step_def.get("name")
                     
-                    keys = [k for k in step_def.keys() if k != "name"]
+                    # Exclude control keywords
+                    control_keys = ["name", "cache"]
+                    keys = [k for k in step_def.keys() if k not in control_keys]
                     if not keys: continue
                     key = keys[0]
+                    
+                    if "." not in key:
+                        # Might be another control key or misconfig
+                        continue
+                        
                     srv, tool = key.split(".")
                     
                     if not step_alias:
@@ -162,9 +173,17 @@ class PipelineClient:
                             else:
                                 raise ValueError(f"Step reference '{v}' not found in previous steps. Available: {list(step_outputs.keys())}")
                 
+                # 3. Adaptive Caching:
+                # Check for 'cache' at top level
+                enable_cache = step_def.get("cache", True) if isinstance(step_def, dict) else True
+                
                 from zenml import step as zenml_step
                 unique_step_name = f"{srv}.{tool}.{i}"
-                dynamic_step = zenml_step(mcp_generic_step.entrypoint, name=unique_step_name)
+                dynamic_step = zenml_step(
+                    mcp_generic_step.entrypoint, 
+                    name=unique_step_name,
+                    enable_cache=enable_cache
+                )
                 
                 step_output = dynamic_step(
                     server_name=srv,

@@ -7,6 +7,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 from loguru import logger
+import sys
+from pathlib import Path
 
 from xfmr_zem.client import PipelineClient
 
@@ -59,6 +61,39 @@ def list_tools(config):
             
     except Exception as e:
         console.print(f"[bold red]Error discovering tools:[/bold red] {e}")
+
+
+@main.command()
+@click.argument("project_name")
+def init(project_name: str):
+    """Bootstrap a new Zem project structure."""
+    base_path = Path(project_name)
+    if base_path.exists():
+        console.print(f"[bold red]Error:[/bold red] Path '{project_name}' already exists.")
+        sys.exit(1)
+
+    # Create directories
+    (base_path / "servers").mkdir(parents=True)
+    (base_path / "tests/manual").mkdir(parents=True)
+    (base_path / "data").mkdir(parents=True)
+
+    # Create sample pipeline
+    pipeline_yaml = f"""name: {project_name}_pipeline
+
+servers:
+  nemo: servers/nemo_curator
+  dj: servers/data_juicer
+
+pipeline:
+  - name: sample_step
+    dj.clean_content:
+      input:
+        data: [{{"text": "Hello Zem!"}}]
+"""
+    (base_path / "pipeline.yaml").write_text(pipeline_yaml)
+
+    console.print(f"[bold green]Success![/bold green] Project '{project_name}' initialized.")
+    console.print(f"Next steps:\n  cd {project_name}\n  zem list-tools -c pipeline.yaml")
 
 @main.command()
 def operators():

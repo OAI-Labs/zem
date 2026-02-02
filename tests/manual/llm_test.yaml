@@ -1,0 +1,17 @@
+name: llm_curation_test
+
+servers:
+  llm: src/xfmr_zem/servers/llm/server.py
+
+pipeline:
+  - name: masked_data
+    llm.mask_pii:
+      input:
+        data: "Contact me at bob@example.com or call 555-12-3456."
+        strength: 0.8
+  
+  - name: summarized_data
+    llm.summarize_document:
+      input:
+        data: "$masked_data"
+        max_words: 5
