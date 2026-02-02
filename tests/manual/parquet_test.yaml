@@ -1,7 +1,7 @@
 name: parquet_support_test
 
 servers:
-  dj: src/xfmr_zem/servers/data_juicer/server.py
+  dj: servers/data_juicer
 
 pipeline:
   - name: save_parquet

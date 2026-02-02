@@ -1,7 +1,7 @@
 name: llm_curation_test
 
 servers:
-  llm: src/xfmr_zem/servers/llm/server.py
+  llm: servers/llm
 
 pipeline:
   - name: masked_data

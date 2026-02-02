@@ -1,7 +1,7 @@
 name: caching_behavior_test
 
 servers:
-  dj: src/xfmr_zem/servers/data_juicer/server.py
+  dj: servers/data_juicer
 
 pipeline:
   - name: cached_step

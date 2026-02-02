@@ -1,9 +1,9 @@
 name: phase4_frontier_test
 
 servers:
-  llm: src/xfmr_zem/servers/llm/server.py
-  sinks: src/xfmr_zem/servers/sinks/server.py
-  dj: src/xfmr_zem/servers/data_juicer/server.py
+  llm: servers/llm
+  sinks: servers/sinks
+  dj: servers/data_juicer
 
 pipeline:
   - name: raw_data
