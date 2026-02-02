@@ -204,19 +204,15 @@ def run(config_file, params):
 def dashboard():
     """Open the ZenML dashboard."""
     import subprocess
+    import webbrowser
+    console.print("[bold blue]Checking ZenML Dashboard...[/bold blue]")
+    # Default ZenML port used in this project
+    url = "http://127.0.0.1:8871"
+    console.print(f"URL: [link={url}]{url}[/link]")
     try:
-        # Check if zenml is already up
-        console.print("[bold blue]Opening ZenML Dashboard...[/bold blue]")
-        # This will fail gracefully if no server is running
-        subprocess.run(["zenml", "show", "--url"], check=False)
-        # Attempt to open browser (best effort)
-        try:
-            import webbrowser
-            webbrowser.open("http://127.0.0.1:8871")
-        except:
-            pass
+        webbrowser.open(url)
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}. Run 'uv run zenml up --port 8871' first.")
+        console.print(f"[yellow]Could not open browser automatically: {e}[/yellow]")
 
 
 @main.command()
