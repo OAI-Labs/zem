@@ -30,18 +30,30 @@
 - **Server Config**: Maps logical server names to their implementation paths (Python scripts).
 
 ## Implemented Servers
+
 - **NeMo Curator Server** (`src/xfmr_zem/servers/nemo_curator/server.py`):
-    - Tools: `pii_removal`, `text_cleaning`.
+    - Tools: `pii_removal`, `normalize`, `quality_filter`.
 - **DataJuicer Server** (`src/xfmr_zem/servers/data_juicer/server.py`):
-    - Tools: `clean_html`, `clean_links`, `fix_unicode`, `whitespace_normalization`, `text_length_filter`, `language_filter`, `document_simhash_dedup`.
+    - Tools: `clean_content`, `refining_filter`, `clean_html`, `clean_links`, `fix_unicode`, `whitespace_normalization`, `text_length_filter`, `language_filter`, `document_simhash_dedup`.
+- **Profiler Server** (`src/xfmr_zem/servers/profiler/server.py`):
+    - Tools: `profile_data` (Generates stats: word counts, null ratios, uniqueness).
+
+## Orchestration & Concurrency
+
+### 1. Sequential (Default)
+Uses the standard ZenML local orchestrator. Steps are executed one-by-one.
+
+### 2. Parallel Local (Optimized)
+Uses the custom `ParallelLocalOrchestrator` (`src/xfmr_zem/orchestrators/parallel_local.py`).
+- **Capability**: Executes independent DAG branches (trees) concurrently using multi-threading.
+- **Setup**: `uv run zenml stack set parallel_stack`.
 
 ## Environment & Constraints
 
 ### 🔴 Port Usage (CRITICAL)
-- **Allowed Port Range**: **8871 - 8879**
-- **ZenML Dashboard**: When starting the ZenML server, you MUST specify a port within this range.
-  - Example: `uv run zenml up --port 8871`
+- **Allowed Port Range**: **8871 - 8879** (Environment restrictions)
+- **ZenML Dashboard**: `uv run zenml up --port 8871`
 
 ### 🟢 Python Environment
 - Use `uv run` to execute scripts in the correct environment.
-- The `src` directory is automatically injected into `PYTHONPATH` by `PipelineClient` for server subprocesses.
+- **PYTHONPATH**: When using the custom parallel orchestrator, you MUST include `src` in your path: `export PYTHONPATH=$PYTHONPATH:$(pwd)/src`.
