@@ -1,104 +1,111 @@
-# Zem
+# 🚀 xfmr-zem
 
-**Unified Data Pipeline Framework** combining **ZenML**, **NeMo Curator**, and **DataJuicer** for scalable, config-driven multi-domain data processing.
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/OAI-Labs/xfmr-zem/releases)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
+[![ZenML](https://img.shields.io/badge/Orchestration-ZenML-blueviolet)](https://zenml.io)
+[![MCP](https://img.shields.io/badge/Interface-MCP-orange)](https://modelcontextprotocol.io)
 
-[🌐 Landing Page & Docs](https://khaihoang.github.io/xfmr-zem/)
+**xfmr-zem** is a high-performance, unified data pipeline framework designed for the modern AI era. It seamlessly bridges **ZenML's** production-grade orchestration with specialized curation powerhouses like **NVIDIA NeMo Curator** and **Alibaba Data-Juicer** using the **Model Context Protocol (MCP)**.
 
+---
 
-## Features
+## ✨ Key Features
 
-- **MCP Architecture**: Standalone, modular servers for domain logic (NeMo Curator, DataJuicer).
-- **Config-Driven**: Define complex pipelines using simple YAML files.
-- **Dynamic Parallel DAGs**: Support for independent pipeline branches and step dependencies using `$anchor` syntax.
-- **Integrated Profiling**: Built-in data profiling server to track data health and quality.
-- **Advanced Sinks**: Seamlessly push processed data to **Hugging Face Hub** and **Vector DBs** (Pinecone, Milvus).
-- **Frontier LLM Support**: Connect to **Ollama** or **OpenAI** for smart data masking and classification.
-- **ZenML Integration**: Automatic tracking, visualization, and performance metrics for every tool call.
-- **Advanced Orchestration**: Custom `ParallelLocalOrchestrator` for true concurrent local execution.
+- 🏗️ **Config-Driven Power**: Define complex, production-ready pipelines in single YAML files.
+- ⚡ **True Parallel DAGs**: Execute independent processing branches concurrently using a custom `ParallelLocalOrchestrator`.
+- 🧠 **Frontier LLM Integration**: Smart data masking, classification, and summarization via **Ollama** or **OpenAI**.
+- 📊 **Deep Observability**: Real-time profiling, per-tool performance metrics, and a beautiful integrated dashboard.
+- 🔄 **Adaptive Caching**: Fine-grained, step-level cache control to optimize your development cycles.
+- 🔌 **Cloud Native**: Native support for S3, GCS, and Parquet with seamless export to **Hugging Face Hub** and **Vector DBs**.
 
-## Getting Started
+---
 
-### 1. Requirements
+## 🏗️ Architecture
 
-- Python 3.10+
-- `uv` (recommended)
-
-### 2. Setup (Parallel Execution)
-To enable true parallel execution on your local machine:
-```bash
-# Set PYTHONPATH so ZenML find the custom orchestrator
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-
-# Switch to the parallel stack
-uv run zenml stack set parallel_stack
+```mermaid
+graph TD
+    YAML["📄 pipeline.yaml"] --> Client["🛠️ Zem CLI / Client"]
+    Client --> ZenML["🌀 ZenML Orchestrator"]
+    ZenML --> Parallel["⚡ Parallel Local Orchestrator"]
+    Parallel --> MCP_Bridge["🔗 MCP Bridge"]
+    
+    subgraph "Specialized Servers (MCP)"
+        MCP_Bridge --> Nemo["🦁 NeMo Curator (GPU)"]
+        MCP_Bridge --> DJ["🧃 Data-Juicer"]
+        MCP_Bridge --> LLM["🤖 Frontier LLMs"]
+        MCP_Bridge --> Prof["📈 Profiler"]
+    end
+    
+    subgraph "Storage & Sinks"
+        Nemo --> S3["☁️ Cloud / Parquet"]
+        DJ --> HF["🤗 Hugging Face"]
+        LLM --> VDB["🌐 Vector DB"]
+    end
 ```
 
-### 3. Run a Pipeline
+---
 
+## 🚀 Quick Start
+
+### 1. Installation
 ```bash
-# Explore available tools across servers
-uv run zem list-tools -c tests/manual/dag_test.yaml
-
-# Run a sample parallel pipeline
-uv run zem run tests/manual/parallel_test.yaml
-
-# Run data profiling
-uv run zem run tests/manual/profiler_test.yaml
+git clone https://github.com/OAI-Labs/xfmr-zem.git
+cd xfmr-zem
+uv sync
 ```
 
-### 4. Visualize with ZenML
-
+### 2. Initialize a New Project
 ```bash
-# Start ZenML server (use allowed port range: 8871-8879)
-uv run zenml up --port 8871
+# Bootstrap a standalone project with a sample agent
+uv run zem init my_project
+cd my_project
 ```
 
-## Architecture
-
-`Zem` uses the **Model Context Protocol (MCP)**:
-- **Servers**: Reside in `src/xfmr_zem/servers/`. Each server exposes tools via standard stdio JSON-RPC.
-- **Client**: `PipelineClient` reads your config and executes tools across servers using ZenML steps.
-
-## Advanced Usage
-
-### Dashboard & Observability
+### 3. Run Your First Pipeline
 ```bash
-# Open ZenML UI shortcut
+uv run zem run pipeline.yaml
+```
+
+### 4. Visualize & Inspect
+```bash
+# Open ZenML Dashboard
 uv run zem dashboard
 
-# Compare two step outputs (Differential analysis)
-uv run zem preview <artifact_id_1> --id2 <artifact_id_2>
-
-# Random sampling of data
-uv run zem preview <artifact_id> --sample --limit 20
+# Preview results with sampling
+uv run zem preview <artifact_id> --sample --limit 5
 ```
 
-### DAG Dependencies
-You can reference the output of a previous step by its name:
-```yaml
-pipeline:
-  - name: step_a
-    dj.clean_content: ...
-  - name: step_b
-    nemo.normalize:
-      input:
-        data: "$step_a" # Parallel resolution
-```
+---
 
-### Performance Monitoring
-Logs automatically capture tool execution time:
-`[dj] Tool 'clean_content' finished in 3.11s`
+## 📖 Guided Documentation
 
-## Development
+| Topic | Description | Link |
+|-------|-------------|------|
+| **Core Concepts** | Understand the Zem architecture and MCP model. | [AGENTS.md](AGENTS.md) |
+| **Pipeline YAML** | How to write and validate your pipeline configs. | [Standard Example](tests/manual/standard_data_pipeline.yaml) |
+| **Advanced Parallelism** | Setup true local concurrency. | [Parallel Guide](tests/manual/parallel_test.yaml) |
+| **LLM & Sinks** | Connecting to external AI stacks. | [Phase 4 Demo](tests/manual/phase4_test.yaml) |
 
-```bash
-# Install in editable mode
-pip install -e ".[dev]"
+---
 
-# Run tests
-pytest
-```
+## 🤝 Contributing
 
-## License
+We welcome contributions! Whether it's a new MCP server, a performance fix, or a typo in the docs, feel free to open a Pull Request. 
 
-This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details.
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## ⚖️ License
+
+Distributed under the **Apache-2.0 License**. See `LICENSE` for more information.
+
+---
+
+<p align="center">
+  Built with ❤️ by the <b>OAI-Labs</b> Team
+</p>
