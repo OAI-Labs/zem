@@ -73,14 +73,16 @@ class PipelineClient:
         servers = self.config.get("servers", {})
         configs = {}
         for name, path_str in servers.items():
-            # Assume local python file path for now as per UltraRAG example
-            # In real implementation we'd parse server.yaml inside that path
-            # But for simplicity, let's assume we invoke the python script directly
-            abs_path = (self.config_path.parent / path_str).resolve()
-            # If path points to a dir, look for src/*.py or similar. 
-            # For now, let's assume the user points to the python file or we find it.
-            # Simplified for MVP: path points to the python file implementing the server.
-             
+            # Support short notation: servers/nemo_curator -> src/xfmr_zem/servers/nemo_curator/server.py
+            if path_str.startswith("servers/"):
+                package_root = Path(__file__).parent.resolve()
+                abs_path = (package_root / path_str / "server.py").resolve()
+            else:
+                abs_path = (self.config_path.parent / path_str).resolve()
+            
+            if not abs_path.exists():
+                print(f"Warning: Server implementation not found at {abs_path}")
+
             env = os.environ.copy()
             # Inject src directory into PYTHONPATH so server can import xfmr_zem
             src_path = str(Path(__file__).parent.parent.resolve())

@@ -34,8 +34,9 @@ def clean_content(
             text = re.sub(r'<[^>]+>', '', text)
             
         if remove_emojis:
-            # Simple emoji removal regex
-            text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+            # Targeted emoji removal: remove high-plane Unicode characters (likely emojis) 
+            # while preserving Vietnamese diacritics and other standard Unicode text.
+            text = re.sub(r'[\U00010000-\U0010ffff]', '', text)
             
         item[text_column] = text.strip()
         

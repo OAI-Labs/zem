@@ -2,12 +2,13 @@ name: nemo_gpu_big_data_demo
 
 parameters:
   # Toàn cục: Kích hoạt GPU cho các step hỗ trợ
-  nemo.use_gpu: true
-  nemo.return_reference: true
+  nemo_curator.use_gpu: true
+  nemo_curator.return_reference: true
+  
 
 servers:
-  io: ../../src/xfmr_zem/servers/io/server.py
-  nemo: ../../src/xfmr_zem/servers/nemo_curator/server.py
+  io: servers/io
+  nemo_curator: servers/nemo_curator
 
 pipeline:
   # 1. Đọc dữ liệu mô phỏng 100GB (Parquet)
@@ -17,12 +18,12 @@ pipeline:
         return_reference: true
   
   # 2. Loại bỏ PII sử dụng GPU (cuDF/CUDA mô phỏng)
-  - nemo.pii_removal:
+  - nemo_curator.pii_removal:
       input:
         use_gpu: true
       
   # 3. Loại bỏ trùng lặp sử dụng GPU
-  - nemo.deduplication:
+  - nemo_curator.deduplication:
       input:
         use_gpu: true
 

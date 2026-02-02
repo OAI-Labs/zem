@@ -1,15 +1,15 @@
 name: io_verification_pipeline
 
 servers:
-  io: ../../src/xfmr_zem/servers/io/server.py
-  dj: ../../src/xfmr_zem/servers/data_juicer/server.py
+  io: servers/io
+  data_juicer: servers/data_juicer
 
 pipeline:
   - io.load_jsonl:
       input:
         path: "data/sample.jsonl"
   
-  - dj.whitespace_normalization: {}
+  - data_juicer.clean_content: {}
       
   - io.save_jsonl:
       input:
