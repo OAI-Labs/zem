@@ -1,8 +1,0 @@
-
-servers:
-  dummy: dummy_server.py
-
-pipeline:
-  - dummy.echo:
-      input:
-        message: "Hello from MCP Client - Run 2"
