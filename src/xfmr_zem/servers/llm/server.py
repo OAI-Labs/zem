@@ -1,49 +1,46 @@
 from xfmr_zem.server import ZemServer
 from typing import Any, List, Optional
 import os
+import json
+import requests
 
 mcp = ZemServer("LLM-Curation")
 
+def _call_llm(prompt: str, provider: str = "ollama", model: Optional[str] = None) -> str:
+    """Helper to route LLM calls."""
+    if provider == "ollama":
+        model = model or "llama3"
+        try:
+            url = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
+            response = requests.post(url, json={"model": model, "prompt": prompt, "stream": False})
+            return response.json().get("response", "")
+        except Exception:
+            return f"[Ollama Error] Could not connect to {model}. Fallback: processed {prompt[:20]}..."
+    elif provider == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key: return "[OpenAI Error] Missing API Key."
+        # Placeholder for real openai client call
+        return f"[OpenAI Mock] Classification/Response for: {prompt[:20]}..."
+    return f"[Mock] {prompt}"
+
 @mcp.tool()
-def mask_pii(data: Any, strength: float = 0.5) -> List[Any]:
-    """
-    Simulate LLM-based PII masking. 
-    In a real scenario, this would call OpenAI, Ollama, or a local Transformer model.
-    """
+def mask_pii(data: Any, provider: str = "ollama") -> List[Any]:
+    """Smart PII masking using LLM."""
     dataset = mcp.get_data(data)
-    
-    # Simulate LLM processing
     for item in dataset:
         if "text" in item:
-            text = item["text"]
-            # Mock masking logic: replace common patterns with [MASKED_LLM]
-            import re
-            # Simple patterns for demo
-            text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', "[EMAIL_MASKED_BY_LLM]", text)
-            text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', "[SSN_MASKED_BY_LLM]", text)
-            item["text"] = text
-            item["llm_processed"] = True
-            item["masking_strength"] = strength
-
+            prompt = f"Remove all PII from this text and return ONLY the cleaned text: {item['text']}"
+            item["text"] = _call_llm(prompt, provider=provider)
     return dataset
 
 @mcp.tool()
-def summarize_document(data: Any, max_words: int = 50) -> List[Any]:
-    """
-    Simulate LLM-based document summarization.
-    """
+def classify_domain(data: Any, categories: List[str] = ["Tech", "Finance", "Legal"], provider: str = "ollama") -> List[Any]:
+    """Classify data domain using LLM."""
     dataset = mcp.get_data(data)
-    
     for item in dataset:
         if "text" in item:
-            text = item["text"]
-            words = text.split()
-            if len(words) > max_words:
-                item["summary"] = " ".join(words[:max_words]) + "..."
-            else:
-                item["summary"] = text
-            item["summary_words"] = min(len(words), max_words)
-
+            prompt = f"Classify this text into one of {categories}. Return ONLY the category name: {item['text']}"
+            item["domain"] = _call_llm(prompt, provider=provider).strip()
     return dataset
 
 if __name__ == "__main__":

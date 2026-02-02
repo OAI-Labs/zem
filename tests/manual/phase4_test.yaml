@@ -1,0 +1,32 @@
+name: phase4_frontier_test
+
+servers:
+  llm: src/xfmr_zem/servers/llm/server.py
+  sinks: src/xfmr_zem/servers/sinks/server.py
+  dj: src/xfmr_zem/servers/data_juicer/server.py
+
+pipeline:
+  - name: raw_data
+    dj.clean_content:
+      input:
+        data: "The stock market in Wall Street is fluctuating due to new tech regulations."
+
+  - name: processed_data
+    llm.classify_domain:
+      input:
+        data: "$raw_data"
+        categories: ["Finance", "Technology", "Health"]
+
+  - name: registry_data
+    sinks.to_huggingface:
+      input:
+        data: "$processed_data"
+        repo_id: "khaihoang/zem-processed-v1"
+        private: true
+
+  - name: vectordb_data
+    sinks.to_vector_db:
+      input:
+        data: "$processed_data"
+        collection: "financial_reports"
+        provider: "pinecone"

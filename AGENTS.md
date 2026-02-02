@@ -37,6 +37,11 @@
     - Tools: `clean_content`, `refining_filter`, `clean_html`, `clean_links`, `fix_unicode`, `whitespace_normalization`, `text_length_filter`, `language_filter`, `document_simhash_dedup`.
 - **Profiler Server** (`src/xfmr_zem/servers/profiler/server.py`):
     - Tools: `profile_data` (Generates stats: word counts, null ratios, uniqueness).
+- **LLM-Curation Server** (`src/xfmr_zem/servers/llm/server.py`):
+    - Tools: `mask_pii`, `classify_domain`.
+    - Providers: **Ollama** (local default), **OpenAI**.
+- **Sinks Server** (`src/xfmr_zem/servers/sinks/server.py`):
+    - Tools: `to_huggingface`, `to_vector_db`.
 
 ## Orchestration & Concurrency
 

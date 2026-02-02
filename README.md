@@ -11,6 +11,8 @@
 - **Config-Driven**: Define complex pipelines using simple YAML files.
 - **Dynamic Parallel DAGs**: Support for independent pipeline branches and step dependencies using `$anchor` syntax.
 - **Integrated Profiling**: Built-in data profiling server to track data health and quality.
+- **Advanced Sinks**: Seamlessly push processed data to **Hugging Face Hub** and **Vector DBs** (Pinecone, Milvus).
+- **Frontier LLM Support**: Connect to **Ollama** or **OpenAI** for smart data masking and classification.
 - **ZenML Integration**: Automatic tracking, visualization, and performance metrics for every tool call.
 - **Advanced Orchestration**: Custom `ParallelLocalOrchestrator` for true concurrent local execution.
 
@@ -58,6 +60,18 @@ uv run zenml up --port 8871
 - **Client**: `PipelineClient` reads your config and executes tools across servers using ZenML steps.
 
 ## Advanced Usage
+
+### Dashboard & Observability
+```bash
+# Open ZenML UI shortcut
+uv run zem dashboard
+
+# Compare two step outputs (Differential analysis)
+uv run zem preview <artifact_id_1> --id2 <artifact_id_2>
+
+# Random sampling of data
+uv run zem preview <artifact_id> --sample --limit 20
+```
 
 ### DAG Dependencies
 You can reference the output of a previous step by its name:

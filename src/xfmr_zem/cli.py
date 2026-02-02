@@ -201,79 +201,94 @@ def run(config_file, params):
 
 
 @main.command()
+def dashboard():
+    """Open the ZenML dashboard."""
+    import subprocess
+    try:
+        # Check if zenml is already up
+        console.print("[bold blue]Opening ZenML Dashboard...[/bold blue]")
+        # This will fail gracefully if no server is running
+        subprocess.run(["zenml", "show", "--url"], check=False)
+        # Attempt to open browser (best effort)
+        try:
+            import webbrowser
+            webbrowser.open("http://127.0.0.1:8871")
+        except:
+            pass
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}. Run 'uv run zenml up --port 8871' first.")
+
+
+@main.command()
 @click.argument("artifact_id")
+@click.option("--id2", help="Secondary artifact ID for comparison (diff mode)")
 @click.option("--limit", "-n", default=10, help="Number of rows to preview")
-def preview(artifact_id, limit):
-    """Preview a ZenML artifact (supports file references)"""
+@click.option("--sample", is_flag=True, help="Show a random sample instead of the head")
+def preview(artifact_id, id2, limit, sample):
+    """Preview a ZenML artifact (supports diff mode and sampling)"""
     from zenml.client import Client
     import pandas as pd
     import json
     
-    console.print(f"[bold blue]Fetching Artifact:[/bold blue] {artifact_id}")
-    
-    try:
-        artifact = Client().get_artifact_version(artifact_id)
-        data = artifact.load()
-        
-        df = None
-        source_type = "Direct"
-        
-        # 1. Check if it's a file reference (Zem pattern)
-        if isinstance(data, dict) and "path" in data:
-            path = data["path"]
-            source_type = f"Reference ({data.get('type', 'unknown')})"
-            
-            if not os.path.exists(path):
-                console.print(f"[bold red]Error:[/bold red] Reference file not found: {path}")
-                return
-            
-            ext = os.path.splitext(path)[1].lower()
-            if ext == ".parquet":
-                df = pd.read_parquet(path)
-            elif ext == ".csv":
-                df = pd.read_csv(path)
+    def load_art_df(uid):
+        art = Client().get_artifact_version(uid)
+        d = art.load()
+        if isinstance(d, dict) and "path" in d:
+            p = d["path"]
+            ext = os.path.splitext(p)[1].lower()
+            if ext == ".parquet": return pd.read_parquet(p)
+            elif ext == ".csv": return pd.read_csv(p)
             elif ext == ".jsonl":
-                with open(path, "r") as f:
-                    lines = [json.loads(line) for line in f]
-                df = pd.DataFrame(lines)
-            else:
-                console.print(f"[bold yellow]Warning:[/bold yellow] Unsupported reference extension {ext}. Displaying raw dict.")
-                console.print(data)
-                return
-        
-        # 2. Check if it's direct data (list of dicts or DataFrame)
-        elif isinstance(data, list):
-            df = pd.DataFrame(data)
-        elif isinstance(data, pd.DataFrame):
-            df = data
-        else:
-            console.print(f"[bold yellow]Raw Data (Non-tabular):[/bold yellow]")
-            console.print(data)
+                with open(p, "r") as f: lines = [json.loads(l) for l in f]
+                return pd.DataFrame(lines)
+        elif isinstance(d, list): return pd.DataFrame(d)
+        elif isinstance(d, pd.DataFrame): return d
+        return None
+
+    try:
+        df1 = load_art_df(artifact_id)
+        if df1 is None:
+            console.print("[bold red]Error:[/bold red] Could not load artifact as tabular data.")
             return
 
-        if df is not None:
-            console.print(f"Source: [green]{source_type}[/green]")
-            console.print(f"Total Rows: [cyan]{len(df)}[/cyan] | Total Columns: [cyan]{len(df.columns)}[/cyan]")
+        if id2:
+            df2 = load_art_df(id2)
+            if df2 is None:
+                console.print("[bold red]Error:[/bold red] Could not load second artifact.")
+                return
             
-            preview_df = df.head(limit)
+            console.print(f"[bold blue]Comparing Artifacts:[/bold blue] {artifact_id} vs {id2}")
+            # Simple column/row diff
+            cols1, cols2 = set(df1.columns), set(df2.columns)
+            console.print(f"  Rows: {len(df1)} -> {len(df2)} ({len(df2)-len(df1):+d})")
+            console.print(f"  Cols: {len(df1.columns)} -> {len(df2.columns)}")
+            if cols1 != cols2:
+                added = cols2 - cols1
+                removed = cols1 - cols2
+                if added: console.print(f"  [green]+ Added columns:[/green] {added}")
+                if removed: console.print(f"  [red]- Removed columns:[/red] {removed}")
             
-            table = Table(show_header=True, header_style="bold magenta", title=f"Preview (First {limit} rows)")
-            
-            # Use string representation for columns to avoid rich issues with complex types
-            for col in preview_df.columns:
-                table.add_column(str(col))
-                
-            for _, row in preview_df.iterrows():
-                # Convert values to strings for display, truncate long strings
-                row_values = []
-                for val in row:
-                    val_str = str(val)
-                    if len(val_str) > 100:
-                        val_str = val_str[:97] + "..."
-                    row_values.append(val_str)
-                table.add_row(*row_values)
-                
-            console.print(table)
+            # Show a few sample rows from both for side-by-side or sequential feel
+            console.print("\n[bold magenta]Diff Sample (df2):[/bold magenta]")
+            df_to_show = df2
+        else:
+            df_to_show = df1
+
+        if sample and len(df_to_show) > limit:
+            preview_df = df_to_show.sample(limit)
+        else:
+            preview_df = df_to_show.head(limit)
+
+        table = Table(show_header=True, header_style="bold magenta", title=f"Preview ({'Sample' if sample else 'Head'} {limit} rows)")
+        for col in preview_df.columns: table.add_column(str(col))
+        for _, row in preview_df.iterrows():
+            row_values = []
+            for val in row:
+                v_str = str(val)
+                if len(v_str) > 100: v_str = v_str[:97] + "..."
+                row_values.append(v_str)
+            table.add_row(*row_values)
+        console.print(table)
             
     except Exception as e:
         console.print(f"[bold red]Error previewing artifact:[/bold red] {e}")
