@@ -77,23 +77,45 @@ def init(project_name: str):
     (base_path / "tests/manual").mkdir(parents=True)
     (base_path / "data").mkdir(parents=True)
 
+    # Create sample server
+    sample_server_py = """from xfmr_zem.server import ZemServer
+from typing import Any, List
+
+# Initialize the sample server
+mcp = ZemServer("SampleAgent")
+
+@mcp.tool()
+def hello_world(data: Any) -> List[Any]:
+    \"\"\"
+    A simple tool that adds a 'greeting' field to each record.
+    \"\"\"
+    dataset = mcp.get_data(data)
+    for item in dataset:
+        item["greeting"] = "Hello from your standalone Zem project!"
+    return dataset
+
+if __name__ == "__main__":
+    mcp.run()
+"""
+    (base_path / "servers" / "sample_server.py").write_text(sample_server_py)
+
     # Create sample pipeline
     pipeline_yaml = f"""name: {project_name}_pipeline
 
 servers:
-  nemo: servers/nemo_curator
-  dj: servers/data_juicer
+  agent: servers/sample_server.py
 
 pipeline:
-  - name: sample_step
-    dj.clean_content:
+  - name: my_first_step
+    agent.hello_world:
       input:
-        data: [{{"text": "Hello Zem!"}}]
+        data: [{{"text": "Zem is awesome!"}}]
 """
     (base_path / "pipeline.yaml").write_text(pipeline_yaml)
 
     console.print(f"[bold green]Success![/bold green] Project '{project_name}' initialized.")
-    console.print(f"Next steps:\n  cd {project_name}\n  zem list-tools -c pipeline.yaml")
+    console.print(f"Created standalone sample server: [cyan]{project_name}/servers/sample_server.py[/cyan]")
+    console.print(f"Next steps:\n  cd {project_name}\n  zem list-tools -c pipeline.yaml\n  zem run pipeline.yaml")
 
 @main.command()
 def operators():

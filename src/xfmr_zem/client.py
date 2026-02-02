@@ -65,15 +65,22 @@ class PipelineClient:
         servers = self.config.servers
         configs = {}
         for name, path_str in servers.items():
-            if path_str.startswith("servers/"):
+            # 1. Try relative to config file (User's project)
+            abs_path = (self.config_path.parent / path_str).resolve()
+            
+            # 2. If it doesn't exist AND starts with "servers/", check internal package
+            if not abs_path.exists() and path_str.startswith("servers/"):
                 package_root = Path(__file__).parent.resolve()
                 abs_path = (package_root / path_str / "server.py").resolve()
-            else:
-                # Try relative to config file, then relative to project root
-                abs_path = (self.config_path.parent / path_str).resolve()
-                if not abs_path.exists():
-                    project_root = Path(__file__).parent.parent.parent.resolve()
-                    abs_path = (project_root / path_str).resolve()
+            
+            # 3. If it still doesn't exist, try relative to project root
+            if not abs_path.exists():
+                project_root = Path(__file__).parent.parent.parent.resolve()
+                abs_path = (project_root / path_str).resolve()
+            
+            # 4. If it's a directory, append default filename
+            if abs_path.exists() and abs_path.is_dir():
+                abs_path = (abs_path / "server.py").resolve()
             
             env = os.environ.copy()
             src_path = str(Path(__file__).parent.parent.resolve())
