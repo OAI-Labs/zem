@@ -163,6 +163,7 @@ def mcp_generic_step(
     env = server_config.get("env", os.environ.copy())
     
     print(f"[{server_name}] Executing tool '{tool_name}'")
+    start_time = time.time()
     
     try:
         params = {
@@ -170,6 +171,8 @@ def mcp_generic_step(
             "arguments": tool_args
         }
         result_data = run_mcp_tool(command, args, env, "tools/call", params)
+        execution_time = time.time() - start_time
+        print(f"[{server_name}] Tool '{tool_name}' finished in {execution_time:.2f}s")
         
         output_data = {}
         

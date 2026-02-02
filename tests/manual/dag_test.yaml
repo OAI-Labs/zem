@@ -5,21 +5,21 @@ servers:
   dj: servers/data_juicer
 
 pipeline:
-  - dj.clean_content:
-      name: step_1
+  - name: step_1
+    dj.clean_content:
       input:
         data: [{"text": "<html>Hello   World! 😊</html>"}]
         remove_html: true
         remove_emojis: true
   
-  - dj.refining_filter:
-      name: step_2
+  - name: step_2
+    dj.refining_filter:
       input:
         data: "$step_1"
         min_len: 10
   
-  - nemo.normalize:
-      name: step_3
+  - name: step_3
+    nemo.normalize:
       input:
         data: "$step_2"
         normalization: "NFC"

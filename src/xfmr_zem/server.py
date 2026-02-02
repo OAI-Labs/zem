@@ -88,29 +88,46 @@ class ZemServer(FastMCP):
         """
         import os
         from loguru import logger
+        
+        logger.debug(f"Server {self.name}.get_data input type: {type(data)}")
+
         if isinstance(data, list):
             return data
         
-        if isinstance(data, dict) and "path" in data:
-            path = data["path"]
-            ext = os.path.splitext(path)[1].lower()
-            
-            logger.info(f"Server {self.name}: Loading reference {path}")
-            if ext == ".jsonl":
-                import json
-                with open(path, "r", encoding="utf-8") as f:
-                    return [json.loads(line) for line in f if line.strip()]
-            elif ext == ".csv":
-                import pandas as pd
-                return pd.read_csv(path).to_dict(orient="records")
-            elif ext == ".parquet":
-                import pandas as pd
-                return pd.read_parquet(path).to_dict(orient="records")
+        if isinstance(data, dict):
+            if "path" in data:
+                path = data["path"]
+                ext = os.path.splitext(path)[1].lower()
+                
+                logger.debug(f"Server {self.name}: Loading reference {path}")
+                if ext == ".jsonl":
+                    import json
+                    with open(path, "r", encoding="utf-8") as f:
+                        return [json.loads(line) for line in f if line.strip()]
+                elif ext == ".csv":
+                    import pandas as pd
+                    return pd.read_csv(path).to_dict(orient="records")
+                elif ext == ".parquet":
+                    import pandas as pd
+                    return pd.read_parquet(path).to_dict(orient="records")
             else:
-                raise ValueError(f"Unsupported reference extension: {ext}")
+                # Single record dictionary
+                logger.debug(f"Server {self.name}: Wrapping single dict in list")
+                return [data]
         
-        logger.debug(f"Server {self.name}: Data is not list or reference, returning raw: {type(data)}")
-        return data
+        if isinstance(data, str):
+            # Might be raw text or JSON string
+            try:
+                import json
+                parsed = json.loads(data)
+                if isinstance(parsed, list): return parsed
+                if isinstance(parsed, dict): return [parsed]
+            except:
+                pass
+            return [{"text": data}]
+            
+        logger.warning(f"Server {self.name}: Unrecognized data type {type(data)}")
+        return [{"raw": str(data)}]
 
     def save_output(self, data: Any, format: str = "parquet") -> Dict[str, Any]:
         """

@@ -1,0 +1,19 @@
+name: profiler_verification_test
+
+servers:
+  dj: servers/data_juicer
+  prof: servers/profiler
+
+pipeline:
+  - dj.clean_content:
+      name: cleaned_data
+      input:
+        data: 
+          - text: "<html>Item 1</html>"
+          - text: "Item 2 with <b>tags</b>"
+        remove_html: true
+  
+  - prof.profile_data:
+      input:
+        data: "$cleaned_data"
+        text_column: "text"

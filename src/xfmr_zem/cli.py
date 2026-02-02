@@ -102,6 +102,15 @@ def _print_static_operators():
     io_table.add_row("load_csv", "Load data from CSV file")
     io_table.add_row("save_csv", "Save data to CSV file")
     console.print(io_table)
+    
+    # Profiler Tools
+    console.print("\n[bold magenta]Profiler Server Tools:[/bold magenta]")
+    prof_table = Table(show_header=True, header_style="bold cyan")
+    prof_table.add_column("Tool Name")
+    prof_table.add_column("Description")
+    
+    prof_table.add_row("profile_data", "Generate summary & metrics for input data")
+    console.print(prof_table)
 
 
 @main.command()

@@ -120,33 +120,47 @@ class PipelineClient:
                 if isinstance(step_def, str):
                     srv, tool = step_def.split(".")
                 elif isinstance(step_def, dict):
-                    # Get the key that is not 'name'
+                    # Check for name at top level or inside the tool dict
+                    step_alias = step_def.get("name")
+                    
                     keys = [k for k in step_def.keys() if k != "name"]
-                    if not keys:
-                        continue
+                    if not keys: continue
                     key = keys[0]
                     srv, tool = key.split(".")
-                    # Check if it has an alias
-                    step_alias = step_def.get("name", f"{srv}.{tool}.{i}")
+                    
+                    if not step_alias:
+                        step_alias = step_def[key].get("name")
+                    
+                    step_alias = step_alias or f"{srv}.{tool}.{i}"
                     tool_args = step_def[key].get("input", {}) or {}
+
+                # Smart Parallelization & DAG Logic:
+                # 1. By default, a step is a root (None) unless it has no 'data' input,
+                #    in which case it inherits from the previous step (linear chain).
+                # 2. If 'data' is a reference ($step), it depends on that specific step.
                 
-                # If no explicit input provided for 'data', use last_output
-                current_prev_output = last_output
-                
-                # DAG support: Check if input references another step
-                # e.g. input: { data: "$step_name" }
-                for k, v in list(tool_args.items()):
-                    if isinstance(v, str) and v.startswith("$"):
-                        target_step = v[1:]
-                        if target_step in step_outputs:
-                            # If it's the 'data' field, we can pass it as previous_output
-                            # which ZenML will materialize properly
-                            if k == "data":
-                                current_prev_output = step_outputs[target_step]
-                                del tool_args[k]
+                current_prev_output = None
+                has_explicit_data = "data" in tool_args
+
+                if not has_explicit_data:
+                    # No data provided? Inherit from the last executed step to keep simple sequences working
+                    current_prev_output = last_output
+                else:
+                    # Data provided? Check if it's a reference or raw data
+                    for k, v in list(tool_args.items()):
+                        if isinstance(v, str) and v.startswith("$"):
+                            target_step = v[1:]
+                            if target_step in step_outputs:
+                                if k == "data":
+                                    current_prev_output = step_outputs[target_step]
+                                    del tool_args[k]
+                                else:
+                                    # Limitation: ZenML doesn't materialize artifacts nested in dicts
+                                    print(f"[Warning] Tool argument '{k}' uses a step reference '{v}'. "
+                                          "Currently, only the 'data' field supports cross-step dependencies. "
+                                          "This value will be passed as a raw string.")
                             else:
-                                # For other fields, we still have a limitation unless we add more args
-                                tool_args[k] = step_outputs[target_step]
+                                raise ValueError(f"Step reference '{v}' not found in previous steps. Available: {list(step_outputs.keys())}")
                 
                 from zenml import step as zenml_step
                 unique_step_name = f"{srv}.{tool}.{i}"

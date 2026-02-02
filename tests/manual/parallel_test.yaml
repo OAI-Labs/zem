@@ -1,0 +1,28 @@
+name: parallel_execution_test
+
+servers:
+  nemo: servers/nemo_curator
+  dj: servers/data_juicer
+
+pipeline:
+  - name: branch_a
+    dj.clean_content:
+      input:
+        data: [{"text": "Hello A"}]
+  
+  - name: branch_b
+    nemo.normalize:
+      input:
+        data: [{"text": "Hello B"}]
+  
+  - name: branch_c
+    dj.refining_filter:
+      input:
+        data: "$branch_a"
+        min_len: 2
+  
+  - name: branch_d
+    nemo.quality_filter:
+      input:
+        data: "$branch_b"
+        min_words: 1
