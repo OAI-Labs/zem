@@ -33,10 +33,39 @@ def info():
     console.print("  - [bold]DataJuicer[/bold]: Comprehensive data processing operators")
 
 
+@main.command(name="list-tools")
+@click.option("--config", "-c", type=click.Path(exists=True), help="Config file to discover tools from")
+def list_tools(config):
+    """List available MCP tools dynamically from servers"""
+    if not config:
+        # Fallback to hardcoded list if no config provided (legacy behavior)
+        console.print("[yellow]Hint: Provide a config file to see dynamic tool list: zem list-tools -c your_config.yaml[/yellow]")
+        _print_static_operators()
+        return
+
+    try:
+        client = PipelineClient(config)
+        all_tools = client.discover_tools()
+        
+        for srv_name, tools in all_tools.items():
+            console.print(f"\n[bold magenta]{srv_name} Server Tools:[/bold magenta]")
+            table = Table(show_header=True, header_style="bold cyan")
+            table.add_column("Tool Name")
+            table.add_column("Description")
+            
+            for tool in tools:
+                table.add_row(tool.get("name", "N/A"), tool.get("description", "No description"))
+            console.print(table)
+            
+    except Exception as e:
+        console.print(f"[bold red]Error discovering tools:[/bold red] {e}")
+
 @main.command()
 def operators():
-    """List available MCP tools and servers"""
-    
+    """List available MCP tools (Static legacy list)"""
+    _print_static_operators()
+
+def _print_static_operators():
     # NeMo Curator Tools
     console.print("\n[bold magenta]NeMo Curator Server Tools:[/bold magenta]")
     nemo_table = Table(show_header=True, header_style="bold cyan")

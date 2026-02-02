@@ -24,6 +24,7 @@ dependencies = [
     "nemo-curator>=1.0.0",
     "dask-cuda>=24.0.0",
     "ftfy>=6.3.1",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]

@@ -109,6 +109,7 @@ class ZemServer(FastMCP):
             else:
                 raise ValueError(f"Unsupported reference extension: {ext}")
         
+        logger.debug(f"Server {self.name}: Data is not list or reference, returning raw: {type(data)}")
         return data
 
     def save_output(self, data: Any, format: str = "parquet") -> Dict[str, Any]:
@@ -130,7 +131,13 @@ class ZemServer(FastMCP):
         
         if format == "parquet":
             import pandas as pd
-            pd.DataFrame(data).to_parquet(path, index=False)
+            logger.debug(f"Server {self.name}: Converting to DataFrame, data type: {type(data)}")
+            try:
+                df = pd.DataFrame(data)
+                df.to_parquet(path, index=False)
+            except Exception as e:
+                logger.error(f"Server {self.name}: Failed to create DataFrame from {type(data)}: {e}")
+                raise
         elif format == "jsonl":
             import json
             with open(path, "w", encoding="utf-8") as f:

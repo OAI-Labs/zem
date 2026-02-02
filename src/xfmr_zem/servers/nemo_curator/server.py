@@ -20,18 +20,22 @@ def normalize(
     text_column: str = "text"
 ) -> Any:
     """Flexible normalization tool."""
-    items = server.get_data(data)
-    if not items: return []
-    logger.info(f"Nemo: Normalizing {len(items)} items")
-    for item in items:
-        if text_column not in item: continue
-        text = str(item[text_column])
-        text = unicodedata.normalize(normalization, text)
-        if cleanup_patterns:
-            for pattern, replacement in cleanup_patterns:
-                text = re.sub(pattern, replacement, text)
-        item[text_column] = text.strip()
-    return server.save_output(items)
+    try:
+        items = server.get_data(data)
+        if not items: return []
+        logger.info(f"Nemo: Normalizing {len(items)} items")
+        for item in items:
+            if text_column not in item: continue
+            text = str(item[text_column])
+            text = unicodedata.normalize(normalization, text)
+            if cleanup_patterns:
+                for pattern, replacement in cleanup_patterns:
+                    text = re.sub(pattern, replacement, text)
+            item[text_column] = text.strip()
+        return server.save_output(items)
+    except Exception as e:
+        logger.exception(f"Error in normalize: {e}")
+        raise
 
 @server.tool()
 def quality_filter(
