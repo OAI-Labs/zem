@@ -12,7 +12,8 @@ jobs:
     permissions:
       # Required for Trusted Publishing (OIDC)
       id-token: write
-      contents: read
+      # Required for creating releases and uploading assets
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
