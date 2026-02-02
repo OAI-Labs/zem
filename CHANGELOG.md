@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - 2026-02-02
+## [0.2.2] - 2026-02-02
+
+### Added
+- **CI/CD Automation**: Integrated GitHub Actions for automated PyPI publishing on tag creation.
+- **Improved Metadata**: Linked PyPI package to GitHub repository, issues, and changelog.
+
+## [0.2.1] - 2026-02-02
 
 ### Added
 - **Parallel Orchestration**: New `ParallelLocalOrchestrator` allowing true concurrent execution of independent DAG branches.
