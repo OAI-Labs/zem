@@ -13,5 +13,4 @@ pipeline:
 
 parameters:
   ocr:
-    engine: "huggingface"
-    model_id: "5CD-AI/Vintern-1B-v2"
+    engine: "viet"

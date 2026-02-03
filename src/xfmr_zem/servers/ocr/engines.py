@@ -103,19 +103,29 @@ class HuggingFaceVLEngine(OCREngineBase):
                 self.processor = AutoProcessor.from_pretrained(self.model_id)
                 logger.debug(f"HuggingFaceVLEngine: Processor loaded successfully")
                 
-                # Force CPU for compatibility with older GPUs (GTX 1080 Ti)
-                # TODO: Add device parameter to allow GPU when compatible
+                # Use GPU if available
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                # Default to float32
                 dtype = torch.float32
-                logger.debug(f"HuggingFaceVLEngine: Loading model with dtype={dtype}, device='cpu'...")
+                if device == "cuda":
+                    # Check compute capability
+                    cc_major = torch.cuda.get_device_properties(0).major
+                    # Pascal (6.1) has poor FP16 performance, so use FP32.
+                    # Volta (7.0) and newer have good FP16 performance.
+                    if cc_major >= 7:
+                        dtype = torch.float16
+                        
+                logger.debug(f"HuggingFaceVLEngine: Loading model with dtype={dtype}, device='{device}'...")
                 # Using AutoModelForVision2Seq for generality
                 self.model = AutoModelForVision2Seq.from_pretrained(
                     self.model_id, 
                     torch_dtype=dtype,
                     device_map=None,
                     trust_remote_code=True
-                ).to("cpu")
-                self._device = "cpu"
-                logger.debug(f"HuggingFaceVLEngine: Model loaded successfully on CPU")
+                ).to(device)
+                self._device = device
+                logger.debug(f"HuggingFaceVLEngine: Model loaded successfully on {device}")
             except ImportError:
                 logger.error("transformers/torch not installed. Required for HuggingFace-VL.")
                 raise
