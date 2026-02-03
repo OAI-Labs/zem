@@ -73,6 +73,11 @@ voice = [
     "librosa",
     "soundfile",
 ]
+ui = [
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -83,7 +88,6 @@ dev = [
 
 [project.scripts]
 zem = "xfmr_zem.cli:main"
-xz = "xfmr_zem.cli:main"
 
 [build-system]
 requires = ["hatchling"]

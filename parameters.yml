@@ -1,7 +1,0 @@
-# Parameters for Zem Pipeline
-# This file allows overriding tool arguments at runtime
-
-ocr:
-  extract_text:
-    engine: "huggingface"
-    model_id: "Qwen/Qwen2-VL-2B-Instruct"

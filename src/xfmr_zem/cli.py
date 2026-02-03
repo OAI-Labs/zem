@@ -264,6 +264,31 @@ def dashboard():
 
 
 @main.command()
+@click.option("--port", "-p", default=8878, help="Port to run the configurator on")
+def explore(port):
+    """Launch the Pipeline Visual Configurator."""
+    import uvicorn
+    import webbrowser
+    import threading
+    import time
+    from xfmr_zem.ui.backend import app
+    
+    url = f"http://127.0.0.1:{port}"
+    console.print(f"[bold blue]Launching Zem Visual Configurator...[/bold blue]")
+    console.print(f"URL: [link={url}]{url}[/link]")
+    
+    def open_browser():
+        time.sleep(1)  # Wait for server to start
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            console.print(f"[yellow]Could not open browser: {e}[/yellow]")
+            
+    threading.Thread(target=open_browser, daemon=True).start()
+    
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+@main.command()
 @click.argument("artifact_id")
 @click.option("--id2", help="Secondary artifact ID for comparison (diff mode)")
 @click.option("--limit", "-n", default=10, help="Number of rows to preview")

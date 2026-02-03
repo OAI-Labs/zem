@@ -1,28 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zem | Unified Data Pipeline Framework</title>
-    <meta name="description" content="A powerful, config-driven data pipeline framework combining MCP and ZenML for high-performance data curation.">
+    <meta name="description"
+        content="A powerful, config-driven data pipeline framework combining MCP and ZenML for high-performance data curation.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body>
+    <div id="particles-bg"></div>
+
     <nav class="glass">
         <div class="container container-nav">
             <div class="logo">
-                <span class="logo-icon">Z</span>
+                <img src="logo.png" alt="Zem Logo" class="logo-img">
                 <span class="logo-text">Zem</span>
             </div>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
+                <li><a href="#modules">Modules</a></li>
                 <li><a href="#architecture">Architecture</a></li>
                 <li><a href="docs/index.html">Docs</a></li>
-                <li><a href="https://github.com/khaihoang/xfmr-zem" class="btn btn-nav">GitHub</a></li>
+                <li><a href="https://github.com/OAI-Labs/xfmr-zem" class="btn btn-nav">GitHub</a></li>
             </ul>
         </div>
     </nav>
@@ -32,53 +40,209 @@
         <div class="blob blob-2"></div>
         <div class="container hero-content">
             <h1 class="animate-up">The Future of Data <span class="gradient-text">Curation</span></h1>
-            <p class="animate-up delay-1">Build, orchestrate, and visualize high-performance data pipelines with Zem. The first unified framework designed for the MCP era.</p>
+            <p class="animate-up delay-1">Build, orchestrate, and visualize high-performance data pipelines with Zem.
+                The first unified framework designed for the MCP era.</p>
             <div class="hero-btns animate-up delay-2">
                 <a href="docs/index.html" class="btn btn-primary">Get Started</a>
-                <a href="#architecture" class="btn btn-secondary">Explore Architecture</a>
+                <a href="#modules" class="btn btn-secondary">Explore Modules</a>
             </div>
             <div class="hero-code animate-up delay-3 glass">
                 <div class="code-header">
                     <span class="dot"></span><span class="dot"></span><span class="dot"></span>
                     <span class="filename">pipeline.yaml</span>
                 </div>
-                <pre><code><span class="key">name</span>: <span class="string">medical_cleaning_pipeline</span>
+                <pre><code><span class="key">name</span>: <span class="string">multimodal_ai_pipeline</span>
 
 <span class="key">servers</span>:
-  <span class="key">nemo</span>: <span class="string">src/xfmr_zem/servers/nemo_curator/server.py</span>
-  <span class="key">dj</span>: <span class="string">src/xfmr_zem/servers/data_juicer/server.py</span>
+  <span class="key">ocr</span>: <span class="string">servers/ocr</span>
+  <span class="key">voice</span>: <span class="string">servers/voice</span>
+  <span class="key">llm</span>: <span class="string">servers/llm</span>
+  <span class="key">nemo</span>: <span class="string">servers/nemo_curator</span>
+  <span class="key">sinks</span>: <span class="string">servers/sinks</span>
 
 <span class="key">pipeline</span>:
+  - <span class="key">ocr.extract_pdf</span>: 
+      <span class="key">file_path</span>: <span class="string">documents/report.pdf</span>
+  - <span class="key">voice.transcribe</span>:
+      <span class="key">file_path</span>: <span class="string">audio/interview.wav</span>
   - <span class="key">nemo.pii_removal</span>:
-      <span class="key">input</span>: {<span class="key">anonymize_names</span>: <span class="string">true</span>}
-  - <span class="key">dj.clean_html</span>: {}</code></pre>
+      <span class="key">anonymize_names</span>: <span class="string">true</span>
+  - <span class="key">llm.classify_domain</span>:
+      <span class="key">categories</span>: [<span class="string">Medical</span>, <span class="string">Legal</span>, <span class="string">Finance</span>]
+  - <span class="key">sinks.to_huggingface</span>:
+      <span class="key">repo_id</span>: <span class="string">your-org/dataset</span></code></pre>
             </div>
         </div>
     </header>
 
     <section id="features" class="features">
         <div class="container">
-            <h2 class="section-title">Why choose Zem?</h2>
+            <h2 class="section-title scroll-reveal">Why choose Zem?</h2>
             <div class="grid feature-grid">
-                <div class="card glass">
+                <div class="card glass scroll-reveal">
                     <i data-lucide="layers" class="icon"></i>
                     <h3>MCP Architecture</h3>
-                    <p>Standalone, modular servers for domain logic. Bypasses async complexity with robust stdio communication.</p>
+                    <p>Standalone, modular servers for domain logic. Bypasses async complexity with robust stdio
+                        communication.</p>
                 </div>
-                <div class="card glass">
+                <div class="card glass scroll-reveal">
                     <i data-lucide="eye" class="icon"></i>
                     <h3>ZenML Visualization</h3>
-                    <p>Automatic tracking and visualization of every step. Wows stakeholders with beautiful pipeline graphs.</p>
+                    <p>Automatic tracking and visualization of every step. Wows stakeholders with beautiful pipeline
+                        graphs.</p>
                 </div>
-                <div class="card glass">
+                <div class="card glass scroll-reveal">
                     <i data-lucide="settings" class="icon"></i>
                     <h3>Config-Driven</h3>
                     <p>No more tangled code. Define or modify complex pipelines by simply editing a YAML file.</p>
                 </div>
-                <div class="card glass">
+                <div class="card glass scroll-reveal">
                     <i data-lucide="zap" class="icon"></i>
-                    <h3>Domain Ready</h3>
-                    <p>Pre-configured tools for Medical, Legal, and Finance industries out of the box.</p>
+                    <h3>GPU Accelerated</h3>
+                    <p>Leverage NVIDIA NeMo Curator for high-performance deduplication, PII removal, and text
+                        normalization.</p>
+                </div>
+                <div class="card glass scroll-reveal">
+                    <i data-lucide="file-text" class="icon"></i>
+                    <h3>Multimodal Ready</h3>
+                    <p>Process PDFs, images, audio, and unstructured documents with specialized OCR and voice engines.
+                    </p>
+                </div>
+                <div class="card glass scroll-reveal">
+                    <i data-lucide="brain" class="icon"></i>
+                    <h3>Frontier LLMs</h3>
+                    <p>Integrate Ollama, OpenAI, or custom models for classification, summarization, and instruction
+                        generation.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="modules" class="modules-sec">
+        <div class="container">
+            <h2 class="section-title scroll-reveal">10+ Production-Ready Modules</h2>
+            <p class="section-subtitle scroll-reveal">Each module is a standalone MCP server, battle-tested for
+                real-world AI pipelines</p>
+
+            <div class="modules-grid">
+                <div class="module-card glass scroll-reveal stagger-1">
+                    <div class="module-icon">
+                        <i data-lucide="shield-check"></i>
+                    </div>
+                    <h3>NeMo Curator</h3>
+                    <p>GPU-accelerated deduplication, PII removal, and text normalization from NVIDIA</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">GPU</span>
+                        <span class="tech-tag">CUDA</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-2">
+                    <div class="module-icon">
+                        <i data-lucide="droplet"></i>
+                    </div>
+                    <h3>Data-Juicer</h3>
+                    <p>Advanced cleaning, filtering, and quality assessment for massive datasets</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">Python</span>
+                        <span class="tech-tag">Dask</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-3">
+                    <div class="module-icon">
+                        <i data-lucide="scan-text"></i>
+                    </div>
+                    <h3>OCR Engine</h3>
+                    <p>Extract text from PDFs and images with HuggingFace VLMs and configurable preprocessing</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">Vision</span>
+                        <span class="tech-tag">PyMuPDF</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-4">
+                    <div class="module-icon">
+                        <i data-lucide="mic"></i>
+                    </div>
+                    <h3>Voice Transcription</h3>
+                    <p>Whisper-powered speech-to-text with automatic language detection</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">Whisper</span>
+                        <span class="tech-tag">Audio</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-5">
+                    <div class="module-icon">
+                        <i data-lucide="sparkles"></i>
+                    </div>
+                    <h3>LLM Integration</h3>
+                    <p>Classify, summarize, and extract insights using Ollama or OpenAI models</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">LLM</span>
+                        <span class="tech-tag">Ollama</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-6">
+                    <div class="module-icon">
+                        <i data-lucide="file-stack"></i>
+                    </div>
+                    <h3>Unstructured Parser</h3>
+                    <p>Parse complex documents including Word, PowerPoint, and HTML with layout preservation</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">Unstructured</span>
+                        <span class="tech-tag">Layout</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-7">
+                    <div class="module-icon">
+                        <i data-lucide="graduation-cap"></i>
+                    </div>
+                    <h3>Instruction Gen</h3>
+                    <p>Generate high-quality training instructions for supervised fine-tuning</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">SFT</span>
+                        <span class="tech-tag">Training</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-8">
+                    <div class="module-icon">
+                        <i data-lucide="database"></i>
+                    </div>
+                    <h3>Data Sinks</h3>
+                    <p>Export to HuggingFace Hub, Vector DBs (Pinecone, Weaviate), or custom endpoints</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">HF Hub</span>
+                        <span class="tech-tag">VectorDB</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-9">
+                    <div class="module-icon">
+                        <i data-lucide="folder-input"></i>
+                    </div>
+                    <h3>I/O Operations</h3>
+                    <p>Load from S3, GCS, local files, or Parquet with partition-aware reading</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">S3</span>
+                        <span class="tech-tag">Parquet</span>
+                    </div>
+                </div>
+
+                <div class="module-card glass scroll-reveal stagger-10">
+                    <div class="module-icon">
+                        <i data-lucide="activity"></i>
+                    </div>
+                    <h3>Profiler</h3>
+                    <p>Deep performance insights with per-tool timing, memory usage, and execution graphs</p>
+                    <div class="module-tech">
+                        <span class="tech-tag">Metrics</span>
+                        <span class="tech-tag">Profiling</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -87,22 +251,61 @@
     <section id="architecture" class="architecture-sec">
         <div class="container grid-2">
             <div>
-                <h2 class="section-title left">Unified Orchestration</h2>
-                <p>Zem acts as the bridge between modular processing units (MCP Servers) and professional orchestration (ZenML). Every execution is tracked, every artifact is versioned, and every step is descriptively labeled.</p>
+                <h2 class="section-title left scroll-reveal">Unified Orchestration</h2>
+                <p class="scroll-reveal">Zem acts as the bridge between modular processing units (MCP Servers) and
+                    professional orchestration (ZenML). Every execution is tracked, every artifact is versioned, and
+                    every step is descriptively labeled.</p>
                 <ul class="check-list">
-                    <li><i data-lucide="check-circle"></i> Dynamic Step Naming</li>
-                    <li><i data-lucide="check-circle"></i> Seamless Subprocess Management</li>
-                    <li><i data-lucide="check-circle"></i> JSON-RPC over Standard I/O</li>
-                    <li><i data-lucide="check-circle"></i> ZenML Stack Integration</li>
+                    <li class="scroll-reveal stagger-1"><i data-lucide="check-circle"></i> Dynamic Step Naming</li>
+                    <li class="scroll-reveal stagger-2"><i data-lucide="check-circle"></i> Seamless Subprocess
+                        Management</li>
+                    <li class="scroll-reveal stagger-3"><i data-lucide="check-circle"></i> JSON-RPC over Standard I/O
+                    </li>
+                    <li class="scroll-reveal stagger-4"><i data-lucide="check-circle"></i> ZenML Stack Integration</li>
+                    <li class="scroll-reveal stagger-5"><i data-lucide="check-circle"></i> Pass-by-Reference for Large
+                        Data</li>
+                    <li class="scroll-reveal stagger-6"><i data-lucide="check-circle"></i> True Parallel DAG Execution
+                    </li>
                 </ul>
             </div>
-            <div class="arch-visual glass">
+            <div class="arch-visual glass scroll-reveal">
                 <div class="layer layer-client">Zem Client</div>
                 <div class="connector pulse"></div>
                 <div class="layer layer-wrapper">ZenML Wrapper</div>
+                <div class="connector pulse"></div>
                 <div class="grid grid-servers">
-                    <div class="layer layer-server">NeMo Server</div>
-                    <div class="layer layer-server">DataJuicer Server</div>
+                    <div class="layer layer-server hover-float">OCR</div>
+                    <div class="layer layer-server hover-float">Voice</div>
+                    <div class="layer layer-server hover-float">NeMo</div>
+                    <div class="layer layer-server hover-float">LLM</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content glass scroll-reveal">
+                <h2>Ready to Transform Your Data Pipeline?</h2>
+                <p>Join developers building the next generation of AI-ready datasets</p>
+                <div class="cta-buttons">
+                    <a href="docs/index.html" class="btn btn-primary btn-large">Get Started Now</a>
+                    <a href="https://github.com/OAI-Labs/xfmr-zem" class="btn btn-secondary btn-large">View on
+                        GitHub</a>
+                </div>
+                <div class="cta-stats">
+                    <div class="stat">
+                        <div class="stat-number">10+</div>
+                        <div class="stat-label">Production Modules</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">GPU</div>
+                        <div class="stat-label">Accelerated</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Config-Driven</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,6 +322,90 @@
 
     <script>
         lucide.createIcons();
+
+        // Particle background animation
+        const particlesBg = document.getElementById('particles-bg');
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+            particlesBg.appendChild(particle);
+        }
+
+        // Scroll reveal animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.scroll-reveal').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Parallax effect on scroll
+        let ticking = false;
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const scrolled = window.pageYOffset;
+                    const blobs = document.querySelectorAll('.blob');
+                    blobs.forEach((blob, index) => {
+                        const speed = 0.3 + (index * 0.1);
+                        blob.style.transform = `translateY(${scrolled * speed}px)`;
+                    });
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        });
+
+        // Hover effect for module cards
+        document.querySelectorAll('.module-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                const rotateX = (y - centerY) / 10;
+                const rotateY = (centerX - x) / 10;
+
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(10px)`;
+            });
+
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateZ(0)';
+            });
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
     </script>
 </body>
+
 </html>
