@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2026-02-03
+
+### Added
+- **Vietnamese OCR**: Integrated specialized Deep-ocr DocumentPipeline for high-accuracy Vietnamese text extraction with layout analysis.
+- **Improved OCR Dependencies**: Added `pdfplumber`, `ruamel.yaml`, and `cachetools` to resolve OCR server tool errors.
+
 ## [0.2.4] - 2026-02-02
 
 ### Fixed
