@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.6] - 2026-02-03
+
+### Added
+- **PDF Extraction & Scanning**: Added support for processing multi-page PDFs in the OCR server. It automatically extracts digital text and falls back to OCR for scanned pages using `PyMuPDF`.
+
 ## [0.2.5] - 2026-02-03
 
 ### Added
