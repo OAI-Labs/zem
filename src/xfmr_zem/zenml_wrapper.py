@@ -24,6 +24,10 @@ def run_mcp_tool(
     """
     cmd = [command] + args
     
+    # Forward stderr to sys.stderr for real-time logging in verbose mode
+    import sys
+    import threading
+    
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -33,6 +37,16 @@ def run_mcp_tool(
         text=True,
         bufsize=0 
     )
+    
+    # Start a thread to stream stderr
+    def stream_stderr():
+        for line in process.stderr:
+            sys.stderr.write(line)
+            sys.stderr.flush()
+    
+    stderr_thread = threading.Thread(target=stream_stderr, daemon=True)
+    stderr_thread.start()
+
 
     try:
         # 1. Initialize
@@ -53,8 +67,7 @@ def run_mcp_tool(
         while True:
             line = process.stdout.readline()
             if not line:
-                 err = process.stderr.read()
-                 raise RuntimeError(f"Server closed connection during init. Stderr: {err}")
+                 raise RuntimeError(f"Server closed connection during init. Check logs above for details.")
             
             if line.strip().startswith("{"):
                 try:
@@ -78,8 +91,7 @@ def run_mcp_tool(
         while True:
             line = process.stdout.readline()
             if not line:
-                 err = process.stderr.read()
-                 raise RuntimeError(f"Server closed connection during {method}. Stderr: {err}")
+                 raise RuntimeError(f"Server closed connection during {method}. Check logs above for details.")
             
             if line.strip().startswith("{"):
                 try:
