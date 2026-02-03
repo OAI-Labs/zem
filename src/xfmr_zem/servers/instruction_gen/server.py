@@ -10,7 +10,7 @@ from loguru import logger
 logger.remove()
 logger.add(sys.stderr, level="INFO")
 
-server = ZemServer("instruction", parameter_file=os.path.join(os.path.dirname(__file__), "parameter.yaml"))
+server = ZemServer("instruction", parameter_file=os.path.join(os.path.dirname(__file__), "parameters.yml"))
 
 @server.tool()
 def generate_qa_pairs(

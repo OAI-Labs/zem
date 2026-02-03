@@ -1,0 +1,12 @@
+# Test configuration for Phase 6: Multimodal Ingestion
+name: multimodal_pipeline
+correlator: xfmr-zem
+
+servers:
+  unstructured: servers/unstructured
+
+pipeline:
+  - name: ingest_document
+    unstructured.parse_document:
+      file_path: "README.md" # We use our own README as a test document
+      strategy: "fast"

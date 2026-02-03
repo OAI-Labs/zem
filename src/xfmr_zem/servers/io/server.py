@@ -7,7 +7,7 @@ from loguru import logger
 import sys
 
 # Initialize server
-server = ZemServer("io", parameter_file=os.path.join(os.path.dirname(__file__), "parameter.yaml"))
+server = ZemServer("io", parameter_file=os.path.join(os.path.dirname(__file__), "parameters.yml"))
 
 @server.tool()
 def load_jsonl(path: str, return_reference: bool = False) -> Any:

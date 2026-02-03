@@ -30,6 +30,8 @@ dependencies = [
     "sentence-transformers>=5.2.2",
     "faiss-cpu>=1.13.2",
     "transformers>=4.55.2",
+    "unstructured[all-docs]>=0.16.0",
+    "python-magic>=0.4.27",
 ]
 
 [project.urls]
@@ -58,6 +60,23 @@ all = [
     "py-data-juicer>=1.0.0",
     "datasketch>=1.6.0",
     "underthesea>=6.8.0",
+]
+ocr = [
+    "pytesseract>=0.3.10",
+    "paddleocr>=2.7.0",
+    "paddlepaddle>=2.6.0",
+    "transformers>=4.40.0",
+    "torch==2.5.1",
+    "torchvision==0.20.1",
+    "pillow>=10.0.0",
+    "onnxruntime>=1.16.0",
+    "opencv-python>=4.8.0",
+    "shapely",
+    "pyclipper",
+    "einops",
+    "pdfplumber>=0.11.0",
+    "ruamel.yaml>=0.17.0",
+    "cachetools>=5.0.0",
 ]
 dev = [
     "pytest>=7.0.0",

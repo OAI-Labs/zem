@@ -173,8 +173,19 @@ def _print_static_operators():
 @main.command()
 @click.argument("config_file", type=click.Path(exists=True))
 @click.option("--params", "-p", type=click.Path(exists=True), help="Path to custom parameters.yml")
-def run(config_file, params):
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose/debug logging")
+def run(config_file, params, verbose):
     """Run a pipeline from a YAML configuration file"""
+    # Configure logging based on verbosity
+    if verbose:
+        os.environ["ZEM_VERBOSE"] = "1"
+        logger.remove()
+        logger.add(sys.stderr, level="DEBUG", format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+        console.print("[bold yellow]Verbose mode enabled - DEBUG logging active[/bold yellow]")
+    else:
+        logger.remove()
+        logger.add(sys.stderr, level="INFO", format="<level>{message}</level>")
+
     abs_config = os.path.abspath(config_file)
     console.print(f"[bold green]Starting Pipeline:[/bold green] {abs_config}")
     if params:
@@ -239,12 +250,18 @@ def preview(artifact_id, id2, limit, sample):
                 return pd.DataFrame(lines)
         elif isinstance(d, list): return pd.DataFrame(d)
         elif isinstance(d, pd.DataFrame): return d
-        return None
+        elif isinstance(d, dict): return pd.DataFrame([d])
+        return d
 
     try:
         df1 = load_art_df(artifact_id)
         if df1 is None:
-            console.print("[bold red]Error:[/bold red] Could not load artifact as tabular data.")
+            console.print("[bold red]Error:[/bold red] Artifact is empty or could not be loaded.")
+            return
+
+        if not isinstance(df1, pd.DataFrame):
+            console.print(f"[bold blue]Artifact Preview (Type: {type(df1).__name__}):[/bold blue]")
+            console.print(str(df1))
             return
 
         if id2:
@@ -288,6 +305,18 @@ def preview(artifact_id, id2, limit, sample):
             
     except Exception as e:
         console.print(f"[bold red]Error previewing artifact:[/bold red] {e}")
+
+
+@main.group()
+def ocr():
+    """OCR related commands (Installation, etc.)"""
+    pass
+
+@ocr.command(name="install")
+def ocr_install():
+    """Install OCR model weights (ONNX/PTH)"""
+    from xfmr_zem.servers.ocr.install_models import main as install_main
+    install_main()
 
 
 if __name__ == "__main__":

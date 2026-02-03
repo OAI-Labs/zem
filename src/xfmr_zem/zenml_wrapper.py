@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, List
 from zenml import step
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from loguru import logger
 import json
 import os
 
@@ -23,6 +24,10 @@ def run_mcp_tool(
     """
     cmd = [command] + args
     
+    # Forward stderr to sys.stderr for real-time logging in verbose mode
+    import sys
+    import threading
+    
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -32,6 +37,16 @@ def run_mcp_tool(
         text=True,
         bufsize=0 
     )
+    
+    # Start a thread to stream stderr
+    def stream_stderr():
+        for line in process.stderr:
+            sys.stderr.write(line)
+            sys.stderr.flush()
+    
+    stderr_thread = threading.Thread(target=stream_stderr, daemon=True)
+    stderr_thread.start()
+
 
     try:
         # 1. Initialize
@@ -52,8 +67,7 @@ def run_mcp_tool(
         while True:
             line = process.stdout.readline()
             if not line:
-                 err = process.stderr.read()
-                 raise RuntimeError(f"Server closed connection during init. Stderr: {err}")
+                 raise RuntimeError(f"Server closed connection during init. Check logs above for details.")
             
             if line.strip().startswith("{"):
                 try:
@@ -77,8 +91,7 @@ def run_mcp_tool(
         while True:
             line = process.stdout.readline()
             if not line:
-                 err = process.stderr.read()
-                 raise RuntimeError(f"Server closed connection during {method}. Stderr: {err}")
+                 raise RuntimeError(f"Server closed connection during {method}. Check logs above for details.")
             
             if line.strip().startswith("{"):
                 try:
@@ -122,7 +135,7 @@ def list_mcp_tools(
         result = run_mcp_tool(command, args, env, "tools/list", {})
         return result.get("tools", [])
     except Exception as e:
-        print(f"Error listing tools: {e}")
+        logger.error(f"Error listing tools: {e}")
         return []
 
 
@@ -162,7 +175,7 @@ def mcp_generic_step(
     args = server_config.get("args", [])
     env = server_config.get("env", os.environ.copy())
     
-    print(f"[{server_name}] Executing tool '{tool_name}'")
+    logger.info(f"[{server_name}] Executing tool '{tool_name}'")
     start_time = time.time()
     
     try:
@@ -172,7 +185,7 @@ def mcp_generic_step(
         }
         result_data = run_mcp_tool(command, args, env, "tools/call", params)
         execution_time = time.time() - start_time
-        print(f"[{server_name}] Tool '{tool_name}' finished in {execution_time:.2f}s")
+        logger.info(f"[{server_name}] Tool '{tool_name}' finished in {execution_time:.2f}s")
         
         output_data = {}
         

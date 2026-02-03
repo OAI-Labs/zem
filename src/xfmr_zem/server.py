@@ -3,7 +3,9 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import yaml
 from pathlib import Path
 from fastmcp import FastMCP
+from loguru import logger
 import inspect
+import functools
 
 class ZemServer(FastMCP):
     """
@@ -22,9 +24,24 @@ class ZemServer(FastMCP):
         self.parameter_file = parameter_file
         self.parameters = {}
         
-        # 1. Load from file
+        # Configure logging based on ZEM_VERBOSE
+        import os
+        import sys
+        if os.environ.get("ZEM_VERBOSE"):
+            logger.remove()
+            logger.add(sys.stderr, level="DEBUG", format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+        
+        # 1. Load from file or auto-detect in server directory
         if parameter_file:
             self.load_parameters(parameter_file)
+        else:
+            # Auto-detect parameters.yml in the same directory as the server script
+            import inspect
+            caller_frame = inspect.stack()[1]
+            caller_file = caller_frame.filename
+            auto_path = Path(caller_file).parent / "parameters.yml"
+            if auto_path.exists():
+                self.load_parameters(str(auto_path))
             
         # 2. Override with env params (from PipelineClient)
         import os
@@ -35,7 +52,7 @@ class ZemServer(FastMCP):
                 if isinstance(env_params, dict):
                     self._merge_parameters(env_params)
             except Exception as e:
-                print(f"Error loading ZEM_PARAMETERS: {e}")
+                logger.error(f"Error loading ZEM_PARAMETERS: {e}")
 
     def load_parameters(self, file_path: str) -> Dict[str, Any]:
         """Load parameters from YAML file and merge them."""
@@ -79,8 +96,8 @@ class ZemServer(FastMCP):
             else:
                 target[k] = v
 
-    # Removed custom tool decorator to fix multiple values for argument 'name' error
-    # Inherit directly from FastMCP.tool
+    # NOTE: Parameter injection is handled by PipelineClient._merge_parameters
+    # and the tool decorator is inherited from FastMCP
 
     def get_data(self, data: Any) -> List[Dict[str, Any]]:
         """

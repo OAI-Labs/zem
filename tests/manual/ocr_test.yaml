@@ -1,0 +1,19 @@
+# Test configuration for OCR Module
+name: ocr_pipeline
+correlator: xfmr-zem
+
+servers:
+  ocr: servers/ocr
+
+pipeline:
+  - name: heavy_ocr_paddle
+    ocr.extract_text:
+      file_path: "data/ocr_test.png"
+      engine: "paddle"
+    cache: false
+
+  - name: light_ocr_tesseract
+    ocr.extract_text:
+      file_path: "data/ocr_test.png"
+      engine: "tesseract"
+    cache: false

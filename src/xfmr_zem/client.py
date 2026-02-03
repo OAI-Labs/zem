@@ -4,6 +4,7 @@ import yaml
 from pathlib import Path
 from zenml import pipeline
 from .zenml_wrapper import mcp_generic_step
+from loguru import logger
 import os
 import sys
 
@@ -39,6 +40,17 @@ class PipelineClient:
                     params.update(yaml.safe_load(f) or {})
         return params
 
+    def _flatten_params(self, d: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
+        """Flatten nested dictionary into dot-notation keys."""
+        items = []
+        for k, v in d.items():
+            new_key = f"{prefix}.{k}" if prefix else k
+            if isinstance(v, dict):
+                items.extend(self._flatten_params(v, new_key).items())
+            else:
+                items.append((new_key, v))
+        return dict(items)
+
     def _load_config_dict(self, path: Path) -> Dict[str, Any]:
         """Load YAML config and perform substitution."""
         with open(path, "r") as f:
@@ -54,8 +66,13 @@ class PipelineClient:
             custom_params = self._load_params(self.params_path)
             self.params.update(custom_params)
             
+        # Flatten params for template substitution
+        flat_params = self._flatten_params(self.params)
+        
         content = raw_content
-        for key, value in self.params.items():
+        # Use reversed sorted keys to avoid partial replacements (e.g. ocr before ocr.engine)
+        for key in sorted(flat_params.keys(), key=len, reverse=True):
+            value = flat_params[key]
             content = content.replace(f"{{{{ {key} }}}}", str(value))
             content = content.replace(f"{{{{{key}}}}}", str(value))
             
@@ -96,6 +113,11 @@ class PipelineClient:
                     server_specific_params[key] = value
             
             env["ZEM_PARAMETERS"] = yaml.dump(server_specific_params)
+            
+            # Pass verbose flag to subprocess
+            if os.environ.get("ZEM_VERBOSE"):
+                env["ZEM_VERBOSE"] = "1"
+            
             configs[name] = {
                 "command": sys.executable,
                 "args": [str(abs_path)],
@@ -146,11 +168,35 @@ class PipelineClient:
                         
                     srv, tool = key.split(".")
                     
-                    if not step_alias:
-                        step_alias = step_def[key].get("name")
-                    
                     step_alias = step_alias or f"{srv}.{tool}.{i}"
-                    tool_args = step_def[key].get("input", {}) or {}
+                    
+                    val = step_def[key]
+                    if isinstance(val, dict):
+                        if "input" in val:
+                            tool_args = val.get("input", {}) or {}
+                        else:
+                            # Use everything except 'name' as tool_args
+                            tool_args = {k: v for k, v in val.items() if k != "name"}
+                    else:
+                        tool_args = {}
+                    
+                # Standardized Parameter Injection: 
+                # Merge parameters from the 'parameters' section.
+                # Priority: Step-specific args > parameters.<srv>.<tool> > parameters.<srv>
+                srv_params = self.params.get(srv, {})
+                if isinstance(srv_params, dict):
+                    # 1. Server-wide defaults
+                    for k, v in srv_params.items():
+                        if k != tool and not isinstance(v, dict) and k not in tool_args:
+                            tool_args[k] = v
+                    
+                    # 2. Tool-specific overrides
+                    tool_params = srv_params.get(tool, {})
+                    if isinstance(tool_params, dict):
+                        for k, v in tool_params.items():
+                            if k not in tool_args:
+                                tool_args[k] = v
+                     
 
                 # Smart Parallelization & DAG Logic:
                 # 1. By default, a step is a root (None) unless it has no 'data' input,
@@ -161,8 +207,13 @@ class PipelineClient:
                 has_explicit_data = "data" in tool_args
 
                 if not has_explicit_data:
-                    # No data provided? Inherit from the last executed step to keep simple sequences working
-                    current_prev_output = last_output
+                    # Smart Source Detection: If a step has 'file_path', 'url', etc.,
+                    # it's likely a primary ingestion step and shouldn't inherit 'data' from the previous step.
+                    source_keys = {"file_path", "url", "uri", "path"}
+                    is_source = any(k in tool_args for k in source_keys)
+                    
+                    if not is_source:
+                        current_prev_output = last_output
                 else:
                     # Data provided? Check if it's a reference or raw data
                     for k, v in list(tool_args.items()):
@@ -174,7 +225,7 @@ class PipelineClient:
                                     del tool_args[k]
                                 else:
                                     # Limitation: ZenML doesn't materialize artifacts nested in dicts
-                                    print(f"[Warning] Tool argument '{k}' uses a step reference '{v}'. "
+                                    logger.warning(f" Tool argument '{k}' uses a step reference '{v}'. "
                                           "Currently, only the 'data' field supports cross-step dependencies. "
                                           "This value will be passed as a raw string.")
                             else:
