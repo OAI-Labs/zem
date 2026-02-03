@@ -24,6 +24,13 @@ class ZemServer(FastMCP):
         self.parameter_file = parameter_file
         self.parameters = {}
         
+        # Configure logging based on ZEM_VERBOSE
+        import os
+        import sys
+        if os.environ.get("ZEM_VERBOSE"):
+            logger.remove()
+            logger.add(sys.stderr, level="DEBUG", format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+        
         # 1. Load from file or auto-detect in server directory
         if parameter_file:
             self.load_parameters(parameter_file)

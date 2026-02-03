@@ -4,6 +4,7 @@ import yaml
 from pathlib import Path
 from zenml import pipeline
 from .zenml_wrapper import mcp_generic_step
+from loguru import logger
 import os
 import sys
 
@@ -112,6 +113,11 @@ class PipelineClient:
                     server_specific_params[key] = value
             
             env["ZEM_PARAMETERS"] = yaml.dump(server_specific_params)
+            
+            # Pass verbose flag to subprocess
+            if os.environ.get("ZEM_VERBOSE"):
+                env["ZEM_VERBOSE"] = "1"
+            
             configs[name] = {
                 "command": sys.executable,
                 "args": [str(abs_path)],
