@@ -1,6 +1,6 @@
 [project]
 name = "xfmr-zem"
-version = "0.2.6"
+version = "0.2.8"
 description = "Zem: Unified Data Pipeline Framework (ZenML + NeMo Curator + DataJuicer) for multi-domain processing"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"

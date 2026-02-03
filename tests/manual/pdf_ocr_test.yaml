@@ -1,0 +1,25 @@
+# Test configuration for PDF Extraction & Scanning
+name: pdf_test_pipeline
+correlator: xfmr-zem
+
+servers:
+  ocr: servers/ocr
+
+pipeline:
+  - name: test_digital_pdf
+    ocr.extract_text:
+      file_path: "data/sample_digital.pdf"
+      engine: "paddle"
+      zoom: 1.5
+    cache: false
+
+  - name: test_scanned_pdf
+    ocr.extract_text:
+      file_path: "data/sample_scanned.pdf"
+      engine: "paddle"
+      scanned_threshold: 100
+      zoom: 3.0
+    cache: false
+
+parameters:
+  ocr.temp_dir: /mnt/shared-Disk3/xfmr-labs/khaihoang/tmp

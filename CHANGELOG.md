@@ -9,6 +9,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.8] - 2026-02-03
+
+### Fixed
+- **Parameter Support**: Fixed dot-notation support for hierarchical parameters in pipeline configurations (e.g., `ocr.temp_dir`).
+- **OCR Server**: Added detailed debug logging for temporary file operations.
+
+## [0.2.7] - 2026-02-03
+
+### Added
+- **Configurable OCR Parameters**: Added `scanned_threshold`, `zoom`, and `temp_dir` parameters to the OCR server for finer control over PDF processing.
+
 ## [0.2.6] - 2026-02-03
 
 ### Added

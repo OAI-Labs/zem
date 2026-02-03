@@ -51,22 +51,48 @@ class PipelineClient:
                 items.append((new_key, v))
         return dict(items)
 
+    def _unflatten_params(self, flat_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Expand dot-notation keys into nested dictionaries."""
+        nested = {}
+        for key, value in flat_dict.items():
+            if "." in key:
+                parts = key.split(".")
+                d = nested
+                for part in parts[:-1]:
+                    if part not in d or not isinstance(d[part], dict):
+                        d[part] = {}
+                    d = d[part]
+                d[parts[-1]] = value
+            else:
+                if isinstance(value, dict) and key in nested and isinstance(nested[key], dict):
+                    nested[key].update(value)
+                else:
+                    nested[key] = value
+        return nested
+
     def _load_config_dict(self, path: Path) -> Dict[str, Any]:
         """Load YAML config and perform substitution."""
         with open(path, "r") as f:
             raw_content = f.read()
             
-        self.params = self._load_params(None)
+        # 1. Load parameters from file
+        base_params = self._load_params(None)
+        
+        # 2. Add custom parameters file if provided
+        if self.params_path:
+            custom_params = self._load_params(self.params_path)
+            base_params.update(custom_params)
+            
+        # 3. Load internal parameters from the config file itself
         preliminary_dict = yaml.safe_load(raw_content) or {}
         internal_params = preliminary_dict.get("parameters", {})
         if internal_params:
-            self.params.update(internal_params)
+            base_params.update(internal_params)
             
-        if self.params_path:
-            custom_params = self._load_params(self.params_path)
-            self.params.update(custom_params)
-            
-        # Flatten params for template substitution
+        # Store unflattened parameters for hierarchical lookup
+        self.params = self._unflatten_params(base_params)
+        
+        # 4. Flatten all params for template substitution ({{ key }})
         flat_params = self._flatten_params(self.params)
         
         content = raw_content
@@ -105,11 +131,12 @@ class PipelineClient:
             env["PYTHONPATH"] = f"{src_path}:{current_pythonpath}" if current_pythonpath else src_path
 
             server_specific_params = {}
-            prefix = f"{name}."
             for key, value in self.params.items():
-                if key.startswith(prefix):
-                    server_specific_params[key[len(prefix):]] = value
-                else:
+                if key == name and isinstance(value, dict):
+                    # Direct match: ocr -> { ... }
+                    server_specific_params.update(value)
+                elif not isinstance(value, dict):
+                    # Global scalars
                     server_specific_params[key] = value
             
             env["ZEM_PARAMETERS"] = yaml.dump(server_specific_params)
