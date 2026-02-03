@@ -25,6 +25,11 @@ dependencies = [
     "dask-cuda>=24.0.0",
     "ftfy>=6.3.1",
     "pydantic>=2.0.0",
+    "datasketch>=1.6.0",
+    "underthesea>=9.2.9",
+    "sentence-transformers>=5.2.2",
+    "faiss-cpu>=1.13.2",
+    "transformers>=4.55.2",
 ]
 
 [project.urls]
@@ -43,10 +48,16 @@ nemo = [
 datajuicer = [
     "py-data-juicer>=1.0.0",
 ]
+deduplication = [
+    "datasketch>=1.6.0",
+    "underthesea>=6.8.0",
+]
 all = [
     "zenml>=0.75.0",
     "nemo-curator>=0.6.0",
     "py-data-juicer>=1.0.0",
+    "datasketch>=1.6.0",
+    "underthesea>=6.8.0",
 ]
 dev = [
     "pytest>=7.0.0",
