@@ -60,3 +60,6 @@ cache/
 src/xfmr_zem/servers/ocr/deepdoc_vietocr/onnx/*.onnx
 src/xfmr_zem/servers/ocr/deepdoc_vietocr/vietocr/weight/*.pth
 src/xfmr_zem/servers/ocr/deepdoc_vietocr/vietocr/weight/*.onnx
+
+# ZenML
+.zen/

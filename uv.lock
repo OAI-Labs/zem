@@ -5827,6 +5827,11 @@ ocr = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
+ui = [
+    { name = "fastapi" },
+    { name = "python-multipart" },
+    { name = "uvicorn" },
+]
 voice = [
     { name = "librosa" },
     { name = "openai-whisper" },
@@ -5843,6 +5848,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.0.0" },
     { name = "dask-cuda", specifier = ">=24.0.0" },
     { name = "einops", marker = "extra == 'ocr'" },
+    { name = "fastapi", marker = "extra == 'ui'" },
     { name = "fastmcp", specifier = ">=0.1.0" },
     { name = "ftfy", specifier = ">=6.3.1" },
     { name = "librosa", marker = "extra == 'voice'" },
@@ -5871,6 +5877,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "python-magic", specifier = ">=0.4.27" },
+    { name = "python-multipart", marker = "extra == 'ui'" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "ruamel-yaml", marker = "extra == 'ocr'", specifier = ">=0.17.0" },
@@ -5881,11 +5888,12 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'ocr'", specifier = "==0.20.1" },
     { name = "transformers", marker = "extra == 'ocr'", specifier = ">=4.40.0" },
     { name = "unstructured", extras = ["all-docs"], specifier = ">=0.16.0" },
+    { name = "uvicorn", marker = "extra == 'ui'" },
     { name = "zenml", marker = "extra == 'all'", specifier = ">=0.75.0" },
     { name = "zenml", marker = "extra == 'zenml'", specifier = ">=0.75.0" },
     { name = "zenml", extras = ["local", "server"], specifier = ">=0.75.0" },
 ]
-provides-extras = ["zenml", "nemo", "datajuicer", "all", "ocr", "voice", "dev"]
+provides-extras = ["zenml", "nemo", "datajuicer", "all", "ocr", "voice", "ui", "dev"]
 
 [[package]]
 name = "xlrd"
