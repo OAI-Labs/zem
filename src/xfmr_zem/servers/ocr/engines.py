@@ -103,16 +103,19 @@ class HuggingFaceVLEngine(OCREngineBase):
                 self.processor = AutoProcessor.from_pretrained(self.model_id)
                 logger.debug(f"HuggingFaceVLEngine: Processor loaded successfully")
                 
-                dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-                logger.debug(f"HuggingFaceVLEngine: Loading model with dtype={dtype}, device_map='auto'...")
+                # Force CPU for compatibility with older GPUs (GTX 1080 Ti)
+                # TODO: Add device parameter to allow GPU when compatible
+                dtype = torch.float32
+                logger.debug(f"HuggingFaceVLEngine: Loading model with dtype={dtype}, device='cpu'...")
                 # Using AutoModelForVision2Seq for generality
                 self.model = AutoModelForVision2Seq.from_pretrained(
                     self.model_id, 
                     torch_dtype=dtype,
-                    device_map="auto",
+                    device_map=None,
                     trust_remote_code=True
-                )
-                logger.debug(f"HuggingFaceVLEngine: Model loaded successfully, device={self.model.device}")
+                ).to("cpu")
+                self._device = "cpu"
+                logger.debug(f"HuggingFaceVLEngine: Model loaded successfully on CPU")
             except ImportError:
                 logger.error("transformers/torch not installed. Required for HuggingFace-VL.")
                 raise
@@ -126,17 +129,25 @@ class HuggingFaceVLEngine(OCREngineBase):
         
         image = Image.open(image_path).convert("RGB")
         
-        # Generic prompt for OCR
-        prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n<|im_start|>user\n<|vision_start|><|vision_end|>Extract all text from this image exactly as it appears.<|im_end|>\n<|im_start|>assistant\n"
+        # Use proper chat template format for Qwen2-VL
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": "Extract all text from this image exactly as it appears."}
+                ]
+            }
+        ]
         
-        # Note: Inference logic might vary slightly between models, but we use a common VLM pattern
-        inputs = self.processor(text=[prompt], images=[image], return_tensors="pt").to(self.model.device)
+        # Apply chat template for proper formatting
+        text_input = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = self.processor(text=[text_input], images=[image], return_tensors="pt", padding=True).to(self._device)
+        
         generated_ids = self.model.generate(**inputs, max_new_tokens=512)
-        text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        
-        # Clean up text if it contains the prompt
-        if "assistant\n" in text:
-            text = text.split("assistant\n")[-1]
+        # Only decode new tokens
+        generated_ids_trimmed = [out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)]
+        text = self.processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0]
             
         return {
             "text": text,
