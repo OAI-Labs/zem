@@ -23,6 +23,9 @@ class ZemServer(FastMCP):
         self.parameter_file = parameter_file
         self.parameters = {}
         
+        # Store reference to parent's tool decorator to avoid recursion
+        self._parent_tool = super().tool
+        
         # 1. Load from file or auto-detect in server directory
         if parameter_file:
             self.load_parameters(parameter_file)
@@ -123,7 +126,7 @@ class ZemServer(FastMCP):
 
             # Ensure FastMCP sees the original signature for schema generation
             wrapper.__signature__ = sig
-            return FastMCP.tool(self, name=name, description=description)(wrapper)
+            return self._parent_tool(name=name, description=description)(wrapper)
 
         return decorator
 
