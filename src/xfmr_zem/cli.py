@@ -173,8 +173,18 @@ def _print_static_operators():
 @main.command()
 @click.argument("config_file", type=click.Path(exists=True))
 @click.option("--params", "-p", type=click.Path(exists=True), help="Path to custom parameters.yml")
-def run(config_file, params):
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose/debug logging")
+def run(config_file, params, verbose):
     """Run a pipeline from a YAML configuration file"""
+    # Configure logging based on verbosity
+    if verbose:
+        logger.remove()
+        logger.add(sys.stderr, level="DEBUG", format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+        console.print("[bold yellow]Verbose mode enabled - DEBUG logging active[/bold yellow]")
+    else:
+        logger.remove()
+        logger.add(sys.stderr, level="INFO", format="<level>{message}</level>")
+
     abs_config = os.path.abspath(config_file)
     console.print(f"[bold green]Starting Pipeline:[/bold green] {abs_config}")
     if params:
