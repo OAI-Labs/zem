@@ -26,8 +26,19 @@ from PIL import Image
 from cachetools import LRUCache, cached
 from ruamel.yaml import YAML
 
-from .db import FileType
-from .constants import IMG_BASE64_PREFIX
+from enum import Enum
+# from .db import FileType
+# from .constants import IMG_BASE64_PREFIX
+IMG_BASE64_PREFIX = 'data:image/png;base64,'
+
+class FileType(Enum):
+    PDF = 'pdf'
+    DOC = 'doc'
+    VISUAL = 'visual'
+    AURAL = 'aural'
+    VIRTUAL = 'virtual'
+    FOLDER = 'folder'
+    OTHER = "other"
 
 PROJECT_BASE = os.getenv("RAG_PROJECT_BASE") or os.getenv("RAG_DEPLOY_BASE")
 RAG_BASE = os.getenv("RAG_BASE")

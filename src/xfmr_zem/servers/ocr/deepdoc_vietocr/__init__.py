@@ -22,7 +22,7 @@ from .ocr import OCR
 from .recognizer import Recognizer
 from .layout_recognizer import LayoutRecognizerDocLayoutYOLO as LayoutRecognizer
 from .table_structure_recognizer import TableStructureRecognizer
-from .engine import VietDocEngine
+# from .engine import VietDocEngine
 
 # New Phase-Based Architecture
 from .pipeline import DocumentPipeline
@@ -52,55 +52,7 @@ if LOCK_KEY_pdfplumber not in sys.modules:
     sys.modules[LOCK_KEY_pdfplumber] = threading.Lock()
 
 
-def init_in_out(args):
-    from PIL import Image
-    import os
-    import traceback
-    from .utils.file_utils import traversal_files
-    images = []
-    outputs = []
-
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir, exist_ok=True)
-
-    def pdf_pages(fnm, rel_path, zoomin=2):
-        nonlocal outputs, images
-        with sys.modules[LOCK_KEY_pdfplumber]:
-            pdf = pdfplumber.open(fnm)
-            # FIX: Use extend instead of assignment to accumulate pages from all PDFs
-            new_images = [p.to_image(resolution=72 * zoomin).annotated for i, p in
-                                enumerate(pdf.pages)]
-            images.extend(new_images)
-
-        for i in range(len(new_images)):
-            outputs.append(rel_path + f"_{i}.jpg")
-        pdf.close()
-
-    def images_and_outputs(fnm, rel_path):
-        nonlocal outputs, images
-        if fnm.split(".")[-1].lower() == "pdf":
-            pdf_pages(fnm, rel_path)
-            return
-        try:
-            fp = open(fnm, 'rb')
-            binary = fp.read()
-            fp.close()
-            images.append(Image.open(io.BytesIO(binary)).convert('RGB'))
-            outputs.append(rel_path)
-        except Exception:
-            traceback.print_exc()
-
-    if os.path.isdir(args.inputs):
-        for fnm in traversal_files(args.inputs):
-            rel_path = os.path.relpath(fnm, args.inputs)
-            images_and_outputs(fnm, rel_path)
-    else:
-        images_and_outputs(args.inputs, os.path.basename(args.inputs))
-
-    for i in range(len(outputs)):
-        outputs[i] = os.path.join(args.output_dir, outputs[i])
-
-    return images, outputs
+# Removed init_in_out
 
 
 __all__ = [
@@ -109,8 +61,8 @@ __all__ = [
     "Recognizer",
     "LayoutRecognizer",
     "TableStructureRecognizer",
-    "VietDocEngine",
-    "init_in_out",
+    # "VietDocEngine",
+    # "init_in_out",
 
     # New Phase-Based Architecture
     "DocumentPipeline",
