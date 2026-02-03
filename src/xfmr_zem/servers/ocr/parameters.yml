@@ -2,3 +2,6 @@
 extract_text:
   engine: "tesseract"
   model_id: null
+  scanned_threshold: 50
+  zoom: 2.0
+  temp_dir: "/tmp"
