@@ -123,7 +123,7 @@ class ZemServer(FastMCP):
 
             # Ensure FastMCP sees the original signature for schema generation
             wrapper.__signature__ = sig
-            return super().tool(name=name, description=description)(wrapper)
+            return FastMCP.tool(self, name=name, description=description)(wrapper)
 
         return decorator
 
