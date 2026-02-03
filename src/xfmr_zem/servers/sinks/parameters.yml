@@ -1,0 +1,6 @@
+# Default parameters for Sinks Server
+to_huggingface:
+  private: true
+
+to_vector_db:
+  provider: "pinecone"

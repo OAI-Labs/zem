@@ -1,0 +1,10 @@
+# Default parameters for LLM Server
+mask_pii:
+  provider: "ollama"
+
+classify_domain:
+  provider: "ollama"
+  categories:
+    - Tech
+    - Finance
+    - Legal

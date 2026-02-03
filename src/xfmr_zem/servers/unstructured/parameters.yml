@@ -1,0 +1,6 @@
+# Default parameters for Unstructured Server
+parse_document:
+  strategy: "fast"
+
+extract_tables:
+  strategy: "hi_res"

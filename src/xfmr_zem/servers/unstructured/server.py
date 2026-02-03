@@ -1,11 +1,11 @@
 import os
 import pandas as pd
-from fastmcp import FastMCP
+from xfmr_zem.server import ZemServer
 from unstructured.partition.auto import partition
 from loguru import logger
 
-# Initialize FastMCP for Unstructured
-mcp = FastMCP("unstructured")
+# Initialize ZemServer for Unstructured
+mcp = ZemServer("unstructured")
 
 @mcp.tool()
 async def parse_document(file_path: str, strategy: str = "fast") -> pd.DataFrame:
