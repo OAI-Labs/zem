@@ -25,6 +25,8 @@ dependencies = [
     "dask-cuda>=24.0.0",
     "ftfy>=6.3.1",
     "pydantic>=2.0.0",
+    "unstructured[all-docs]>=0.16.0",
+    "python-magic>=0.4.27",
 ]
 
 [project.urls]
@@ -47,6 +49,23 @@ all = [
     "zenml>=0.75.0",
     "nemo-curator>=0.6.0",
     "py-data-juicer>=1.0.0",
+]
+ocr = [
+    "pytesseract>=0.3.10",
+    "paddleocr>=2.7.0",
+    "paddlepaddle>=2.6.0",
+    "transformers>=4.40.0",
+    "torch==2.5.1",
+    "torchvision==0.20.1",
+    "pillow>=10.0.0",
+    "onnxruntime>=1.16.0",
+    "opencv-python>=4.8.0",
+    "shapely",
+    "pyclipper",
+    "einops",
+    "pdfplumber>=0.11.0",
+    "ruamel.yaml>=0.17.0",
+    "cachetools>=5.0.0",
 ]
 dev = [
     "pytest>=7.0.0",

@@ -42,6 +42,18 @@
     - Providers: **Ollama** (local default), **OpenAI**.
 - **Sinks Server** (`src/xfmr_zem/servers/sinks/server.py`):
     - Tools: `to_huggingface`, `to_vector_db`.
+### 5. Unstructured Server (`servers/unstructured`)
+Advanced document parsing for multimodal data ingestion.
+- `parse_document`: Convert PDF, DOCX, HTML to structured text.
+- `extract_tables`: Specifically isolate and extract table data from documents.
+
+### 6. OCR Server (`servers/ocr`)
+Unified OCR processing with multiple engine support (SOLID Strategy Pattern).
+- `extract_text`: Extract text from images using different engines:
+    - `tesseract`: Lightweight and fast.
+    - `paddle`: Medium weight, high accuracy.
+    - `qwen`: Heavy Vision-Language Model (Qwen3-VL-8B) for state-of-the-art OCR.
+    - `viet`: Specialized Vietnamese OCR using built-in `deepdoc_vietocr` pipeline. Optimized for Vietnamese diacritics and document layout reconstruction.
 
 ## Orchestration & Concurrency
 

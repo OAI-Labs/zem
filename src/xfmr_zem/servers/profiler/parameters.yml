@@ -1,0 +1,4 @@
+# Default parameters for Profiler Server
+profile_data:
+  text_column: "text"
+  include_stats: true

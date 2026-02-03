@@ -1,0 +1,14 @@
+# Test configuration for Hugging Face OCR
+name: hf_ocr_pipeline
+correlator: xfmr-zem
+
+servers:
+  ocr: servers/ocr
+
+pipeline:
+  - name: hf_ocr_test
+    ocr.extract_text:
+      file_path: "data/vietnamese_ocr.png"
+      engine: "huggingface"
+      model_id: "Qwen/Qwen2-VL-2B-Instruct"
+    cache: false

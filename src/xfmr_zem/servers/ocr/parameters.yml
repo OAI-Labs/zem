@@ -1,0 +1,4 @@
+# Default parameters for OCR Server
+extract_text:
+  engine: "tesseract"
+  model_id: null
