@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.9] - 2026-02-03
+
+### Added
+- **Voice Processing Module**: Added a new `voice` server with Automatic Speech Recognition (ASR) support using OpenAI Whisper.
+- **Voice Transcription Tool**: Introduced `transcribe` tool for high-quality audio-to-text conversion.
+
 ## [0.2.8] - 2026-02-03
 
 ### Fixed

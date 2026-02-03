@@ -193,15 +193,52 @@ def run(config_file, params, verbose):
     
     try:
         client = PipelineClient(abs_config, params_path=params)
+        
+        # Dashboard URL (Pre-run)
+        try:
+            workspace_name = "default"
+            try:
+                from zenml.client import Client
+                zn_client = Client()
+                workspace_name = getattr(zn_client, "active_workspace_name", 
+                                       getattr(zn_client.active_workspace, "name", "default"))
+            except:
+                pass
+            pre_run_url = f"http://127.0.0.1:8871/projects/{workspace_name}/runs"
+            console.print(f"[bold blue]Dashboard URL (Pre-run):[/bold blue] [link={pre_run_url}]{pre_run_url}[/link]")
+        except:
+            pass
+
         run_response = client.run()
         
         console.print(f"\n[bold blue]Pipeline Execution Finished![/bold blue]")
         console.print(f"Run Name: [cyan]{run_response.name}[/cyan]")
         console.print(f"Status: [yellow]{run_response.status}[/yellow]")
         
+        # ZenML dashboard URL
+        try:
+            run_id = getattr(run_response, "id", None)
+            if run_id:
+                workspace_name = "default"
+                try:
+                    from zenml.client import Client
+                    client = Client()
+                    # Try to get active workspace name
+                    if hasattr(client, "active_workspace_name"):
+                        workspace_name = client.active_workspace_name
+                    elif hasattr(client, "active_workspace"):
+                        workspace_name = client.active_workspace.name
+                except:
+                    pass
+                
+                dashboard_url = f"http://127.0.0.1:8871/projects/{workspace_name}/runs/{run_id}/dag"
+                console.print(f"Dashboard URL (Run): [link={dashboard_url}]{dashboard_url}[/link]")
+        except Exception as e:
+            logger.debug(f"Could not generate dashboard URL: {e}")
+        
         console.print(f"\n[dim]To visualize this run, ensure ZenML dashboard is running:[/dim]")
         console.print(f"[dim]uv run zenml up --port 8871[/dim]")
-        console.print(f"[dim]Or view runs via: zem dashboard[/dim]") # Future proofing hint
+        console.print(f"[dim]Or view runs via: zem dashboard[/dim]")
         
     except Exception as e:
         console.print(f"\n[bold red]Pipeline Failed:[/bold red] {e}")

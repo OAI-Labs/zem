@@ -1,6 +1,6 @@
 [project]
 name = "xfmr-zem"
-version = "0.2.8"
+version = "0.2.9"
 description = "Zem: Unified Data Pipeline Framework (ZenML + NeMo Curator + DataJuicer) for multi-domain processing"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -67,6 +67,11 @@ ocr = [
     "pymupdf>=1.23.0",
     "ruamel.yaml>=0.17.0",
     "cachetools>=5.0.0",
+]
+voice = [
+    "openai-whisper",
+    "librosa",
+    "soundfile",
 ]
 dev = [
     "pytest>=7.0.0",

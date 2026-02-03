@@ -1,0 +1,15 @@
+name: voice_transcription_pipeline
+
+parameters:
+  voice:
+    engine: whisper
+    model_size: base
+
+servers:
+  voice: servers/voice
+
+pipeline:
+  - voice.transcribe:
+      input:
+        file_path: data/chunk_122.wav 
+    cache: false
