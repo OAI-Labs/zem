@@ -24,6 +24,7 @@ jobs:
           config.model: "gemini/gemini-3-flash-preview"
           config.fallback_models: '["gemini/gemini-3-pro-preview"]'
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          config.max_model_tokens: "1048576"
           # Enable automatic tools
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
@@ -31,4 +32,4 @@ jobs:
           # Set minimum number of code suggestions to 6
           PR_CODE_SUGGESTIONS.NUM_CODE_SUGGESTIONS: 6
           # Custom instructions from secret
-          PR_REVIEWER.EXTRA_INSTRUCTIONS: ${{ secrets.PR_REVIEWER_EXTRA_INSTRUCTIONS }}
+          pr_reviewer.extra_instructions: ${{ secrets.PR_REVIEWER_EXTRA_INSTRUCTIONS }}
