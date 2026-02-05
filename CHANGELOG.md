@@ -1,3 +1,10 @@
+## [0.2.5] [*](https://github.com/OAI-Labs/xfmr-zem/pull/5) - 2026-02-05
+
+### Added
+- **Entity-Aware Deduplication**: Two-stage server using MinHash + LSH and NER-based filtering for high-precision document deduplication.
+- **Vietnamese Language Support**: Added diacritics normalization and word tokenization optimized for Vietnamese text.
+- **Similarity & Clustering Tools**: New MCP tools for document similarity, clustering, and signature computation.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
