@@ -492,15 +492,6 @@ def entity_aware_dedup(
     if not items:
         return server.save_output([])
     
-    logger.info(f"number of perm: {num_perm}")
-    logger.info(f"shingle size: {shingle_size}")
-    logger.info(f"shingle type: {shingle_type}")
-    logger.info(f"normalize diacritics: {normalize_diacritics}")
-    logger.info(f"text column: {text_column}")
-    logger.info(f"id column: {id_column}")
-    logger.info(f"keep: {keep}")
-    logger.info(f"return analysis: {return_analysis}")
-
     logger.info(
         f"Two-Stage Entity-Aware Dedup: {len(items)} documents, "
         f"threshold={threshold}, normalize_diacritics={normalize_diacritics}"
