@@ -1,4 +1,4 @@
-## [0.2.10] [*](https://github.com/OAI-Labs/xfmr-zem/pull/6) - 2026-02-06
+## [0.3.0] [*](https://github.com/OAI-Labs/xfmr-zem/pull/6) - 2026-02-06
 
 ### Added
 - **Two-Stage Deduplication**: Implemented a high-precision pipeline combining MinHash LSH with NER-based filtering and semantic similarity detection.
