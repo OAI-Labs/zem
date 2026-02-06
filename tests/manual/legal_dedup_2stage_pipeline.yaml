@@ -1,0 +1,47 @@
+# Two-Stage Entity-Aware Deduplication Pipeline
+# Stage 1: MinHash LSH for candidate detection
+# Stage 2: NER-based entity comparison to filter false positives
+#
+# Data source: /mnt/shared-Disk3/xfmr-labs/shared_data/legal_data/legal_gold/tvpl_enriched.jsonl.gz
+# Schema: See legal-data-enrichment/docs/DB_schema.md
+
+name: legal_dedup_2stage_pipeline
+
+# Parameters (can be overridden via CLI: zem run -p custom_params.yml)
+parameters:
+  # Sample 10K documents for testing
+  data_path: "data/legal_sample_10k.jsonl"
+  # Full dataset path (uncomment for production)
+  # data_path: "/mnt/shared-Disk3/xfmr-labs/shared_data/legal_data/legal_gold/tvpl_enriched.jsonl.gz"
+  
+  # Stage 1 threshold - high enough to catch near-duplicates
+  # Lower threshold = more candidates (higher recall, more Stage 2 work)
+  # Higher threshold = fewer candidates (lower recall, faster)
+  similarity_threshold: 0.9
+  
+  # Output paths
+  analysis_output: "data/dedup_2stage_analysis_10k.json"
+  deduplicated_output: "data/legal_deduplicated_10k.jsonl"
+
+servers:
+  dedup: servers/deduplication
+
+pipeline:
+  # Run Two-Stage Dedup with Analysis only
+  # This shows detailed breakdown of true duplicates vs false positives
+  - name: dedup_analysis
+    dedup.entity_aware_dedup:
+      input:
+        data:
+          path: "{{ data_path }}"
+        threshold: "{{ similarity_threshold }}"
+        num_perm: 128
+        shingle_size: 5
+        shingle_type: "char"
+        normalize_diacritics: true
+        text_column: "markdown_content"
+        id_column: "document_number"
+        keep: "first"
+        return_analysis: true  # Return detailed analysis
+      output:
+        path: "{{ analysis_output }}"

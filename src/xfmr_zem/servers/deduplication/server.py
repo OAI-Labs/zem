@@ -1026,33 +1026,54 @@ def entity_aware_dedup(
     )
     
     if return_analysis:
-        # Return detailed analysis
-        result = {
+        # Return detailed analysis as list of records (for parquet compatibility)
+        # First record contains summary stats
+        fp_reasons = defaultdict(int)
+        for _, _, _, reason, _, _ in false_positives:
+            fp_reasons[reason] += 1
+        
+        analysis_records = []
+        
+        # Summary record
+        analysis_records.append({
+            "type": "summary",
             "total_documents": len(items),
             "indexed_documents": len(doc_id_to_idx),
             "stage1_candidates": len(stage1_candidates),
             "true_duplicates": len(true_duplicates),
             "false_positives_filtered": len(false_positives),
-            "reduction_rate": len(false_positives) / max(1, len(stage1_candidates)),
-            "true_duplicate_pairs": [
-                {
-                    "doc1_id": d1.rsplit('_', 1)[0],
-                    "doc2_id": d2.rsplit('_', 1)[0],
-                    "similarity": round(sim, 4),
-                    "doc1_title": items[i1].get('title', '')[:100],
-                    "doc2_title": items[i2].get('title', '')[:100],
-                }
-                for d1, d2, sim, i1, i2 in true_duplicates[:50]
-            ],
-            "false_positive_reasons": defaultdict(int)
-        }
+            "reduction_rate": round(len(false_positives) / max(1, len(stage1_candidates)), 4),
+            "fp_different_organizations": fp_reasons.get("different_organizations", 0),
+            "fp_different_issuing_body": fp_reasons.get("different_issuing_body", 0),
+            "fp_different_titles": fp_reasons.get("different_titles", 0),
+            "doc1_id": None,
+            "doc2_id": None,
+            "similarity": None,
+            "doc1_title": None,
+            "doc2_title": None,
+        })
         
-        for _, _, _, reason, _, _ in false_positives:
-            result["false_positive_reasons"][reason] += 1
+        # True duplicate pairs
+        for d1, d2, sim, i1, i2 in true_duplicates[:50]:
+            analysis_records.append({
+                "type": "true_duplicate",
+                "total_documents": None,
+                "indexed_documents": None,
+                "stage1_candidates": None,
+                "true_duplicates": None,
+                "false_positives_filtered": None,
+                "reduction_rate": None,
+                "fp_different_organizations": None,
+                "fp_different_issuing_body": None,
+                "fp_different_titles": None,
+                "doc1_id": d1.rsplit('_', 1)[0],
+                "doc2_id": d2.rsplit('_', 1)[0],
+                "similarity": round(sim, 4),
+                "doc1_title": items[i1].get('title', '')[:100],
+                "doc2_title": items[i2].get('title', '')[:100],
+            })
         
-        result["false_positive_reasons"] = dict(result["false_positive_reasons"])
-        
-        return server.save_output(result)
+        return server.save_output(analysis_records)
     
     # Determine which documents to remove
     to_remove = set()
