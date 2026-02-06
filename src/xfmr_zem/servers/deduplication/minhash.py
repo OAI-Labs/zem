@@ -15,7 +15,7 @@ from typing import Dict, List, Set, Tuple
 from collections import defaultdict
 from loguru import logger
 
-from .vietnamese import remove_vietnamese_diacritics, tokenize_vietnamese
+from xfmr_zem.servers.deduplication.text_processing import remove_vietnamese_diacritics, tokenize_vietnamese
 
 
 class MinHashLSH:

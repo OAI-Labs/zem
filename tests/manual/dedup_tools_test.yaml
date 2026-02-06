@@ -1,0 +1,48 @@
+# Test all deduplication tools
+name: dedup_tools_test
+
+servers:
+  dedup: servers/deduplication
+
+pipeline:
+  # Test 1: Basic MinHash Dedup (no entity filtering)
+  - name: test_minhash_dedup
+    dedup.minhash_dedup:
+      data: "data/legal_sample_10k.jsonl"
+      threshold: 0.9
+      num_perm: 128
+      shingle_size: 5
+      text_column: "markdown_content"
+      id_column: "document_number"
+      return_duplicates: true
+    cache: false
+
+  # Test 2: Compute MinHash Signatures only
+  - name: test_compute_signatures
+    dedup.compute_minhash_signatures:
+      data: "data/legal_sample_10k.jsonl"
+      num_perm: 128
+      shingle_size: 5
+      text_column: "markdown_content"
+      id_column: "document_number"
+    cache: false
+
+  # Test 3: Find Similar Documents
+  - name: test_find_similar
+    dedup.find_similar_documents:
+      data: "data/legal_sample_10k.jsonl"
+      query_idx: 0
+      top_k: 5
+      threshold: 0.5
+      text_column: "markdown_content"
+    cache: false
+
+  # Test 4: Cluster Duplicates
+  - name: test_cluster
+    dedup.cluster_duplicates:
+      data: "data/legal_sample_10k.jsonl"
+      threshold: 0.9
+      num_perm: 128
+      text_column: "markdown_content"
+      id_column: "document_number"
+    cache: false

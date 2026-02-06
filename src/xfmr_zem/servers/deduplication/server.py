@@ -22,8 +22,8 @@ from xfmr_zem.server import ZemServer
 from loguru import logger
 
 # Import from local modules
-from .minhash import MinHashLSH
-from .ner import extract_entities, entities_match
+from xfmr_zem.servers.deduplication.minhash import MinHashLSH
+from xfmr_zem.servers.deduplication.ner import extract_entities, entities_match
 
 # Setup logging
 logger.remove()
