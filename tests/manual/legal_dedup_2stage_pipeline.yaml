@@ -10,6 +10,8 @@ name: legal_dedup_2stage_pipeline
 servers:
   dedup: servers/deduplication
 
+
+
 pipeline:
   # Run Two-Stage Dedup with Analysis
   # Returns detailed breakdown of true duplicates vs false positives
@@ -17,8 +19,6 @@ pipeline:
     dedup.entity_aware_dedup:
       data: "data/legal_sample_10k.jsonl"
       threshold: 0.9
-      num_perm: 128
-      shingle_size: 5
       shingle_type: "char"
       normalize_diacritics: true
       text_column: "markdown_content"
@@ -26,3 +26,14 @@ pipeline:
       keep: "first"
       return_analysis: true
     cache: false
+
+parameters:
+  dedup:
+    num_perm: 256
+    shingle_size: 5
+    shingle_type: "char"
+    normalize_diacritics: true
+    text_column: "markdown_content"
+    id_column: "document_number"
+    keep: "first"
+    return_analysis: true

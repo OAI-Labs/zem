@@ -56,6 +56,12 @@ Thumbs.db
 outputs/
 cache/
 
+# Large data files
+data/*.jsonl
+data/*.json
+data/*.parquet
+data/*.gz
+
 # Binary Models (OCR) - Should be downloaded separately
 src/xfmr_zem/servers/ocr/deepdoc_vietocr/onnx/*.onnx
 src/xfmr_zem/servers/ocr/deepdoc_vietocr/vietocr/weight/*.pth
