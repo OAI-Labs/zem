@@ -1086,8 +1086,8 @@ def entity_aware_dedup(
             "doc2_title": None,
         })
         
-        # True duplicate pairs
-        for d1, d2, sim, i1, i2 in true_duplicates[:50]:
+        # True duplicate pairs (save ALL, not just first 50)
+        for d1, d2, sim, i1, i2 in true_duplicates:
             analysis_records.append({
                 "type": "true_duplicate",
                 "total_documents": None,
