@@ -1,79 +1,25 @@
-# Parameters for Deduplication Server (MinHash + LSH)
-# Optimized for Vietnamese legal documents from tvpl_enriched
-
-# =============================================================================
-# RECOMMENDED SETTINGS FOR LEGAL DOCUMENTS
-# =============================================================================
-# 
-# BEST PRACTICE: Use entity_aware_dedup for legal documents
-#   - Two-stage approach filters template-based false positives
-#   - Handles OCR errors with diacritics normalization
-#
-# For near-exact duplicates only:
-#   threshold: 0.9, shingle_size: 5, shingle_type: char
-#
-# For similar templates (may remove different content):
-#   threshold: 0.85, shingle_size: 5, shingle_type: char
-#
-# NOTE: Legal documents with same template but different content 
-# (e.g., decisions for different schools) have ~85-95% similarity.
-# The entity_aware_dedup tool filters these out automatically.
-# =============================================================================
-
+# Default parameters for Deduplication Server
 minhash_dedup:
-  # Jaccard similarity threshold (0.0-1.0)
   threshold: 0.9
-  
-  # Number of hash permutations
   num_perm: 128
-  
-  # Shingle (n-gram) size
   shingle_size: 5
-  
-  # Shingle type: "char" or "word"
   shingle_type: "char"
-  
-  # Vietnamese tokenizer (underthesea)
-  # Only used when shingle_type: "word"
   use_vi_tokenizer: false
-  
-  # Normalize Vietnamese diacritics (handles OCR errors)
-  # "Luật" and "Luat" will match
   normalize_diacritics: true
-  
-  # Column containing text to deduplicate
   text_column: "markdown_content"
-  
-  # Column to use as document ID
-  id_column: "document_number"
-  
-  # Which document to keep when duplicates found
+  id_column: null
   keep: "first"
+  return_duplicates: false
 
-# =============================================================================
-# TWO-STAGE ENTITY-AWARE DEDUPLICATION (RECOMMENDED FOR LEGAL DOCS)
-# =============================================================================
 entity_aware_dedup:
-  # Stage 1 threshold (higher recall to catch candidates)
   threshold: 0.9
-  
   num_perm: 128
   shingle_size: 5
   shingle_type: "char"
-  
-  # Normalize Vietnamese diacritics (handles OCR errors)
   normalize_diacritics: true
-  
-  # Column containing text to deduplicate
   text_column: "markdown_content"
-  
-  # Column to use as document ID
   id_column: "document_number"
-  
-  # Which document to keep when duplicates found
   keep: "first"
-  
-  # Return analysis instead of deduplicated data
   return_analysis: false
 
 compute_minhash_signatures:
@@ -81,9 +27,8 @@ compute_minhash_signatures:
   shingle_size: 5
   shingle_type: "char"
   use_vi_tokenizer: false
-  normalize_diacritics: true
-  text_column: "markdown_content"
-  id_column: "document_number"
+  text_column: "text"
+  id_column: null
 
 find_similar_documents:
   top_k: 10
@@ -92,28 +37,13 @@ find_similar_documents:
   shingle_size: 5
   shingle_type: "char"
   use_vi_tokenizer: false
-  normalize_diacritics: true
-  text_column: "markdown_content"
+  text_column: "text"
 
 cluster_duplicates:
-  threshold: 0.9
+  threshold: 0.8
   num_perm: 128
   shingle_size: 5
   shingle_type: "char"
   use_vi_tokenizer: false
-  normalize_diacritics: true
-  text_column: "markdown_content"
-  id_column: "document_number"
-
-# =============================================================================
-# REDIS CONFIGURATION (OPTIONAL - FOR INCREMENTAL UPDATES)
-# =============================================================================
-# Uncomment and configure to enable Redis-backed LSH for persistence
-# 
-# redis:
-#   host: "localhost"
-#   port: 6379
-#   db: 0
-#   basename: "legal_dedup_lsh"
-#   # password: "your_password"  # If Redis requires auth
-# =============================================================================
+  text_column: "text"
+  id_column: null
