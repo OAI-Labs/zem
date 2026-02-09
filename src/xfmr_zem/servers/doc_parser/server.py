@@ -20,7 +20,6 @@ from loguru import logger
 # Setup logging
 logger.remove()
 logger.add(sys.stderr, level="INFO")
-logger.add("doc_parser.log", rotation="10 MB", level="DEBUG")
 
 server = ZemServer("Document Parser", parameter_file=os.path.join(os.path.dirname(__file__), "parameters.yml"))
 
