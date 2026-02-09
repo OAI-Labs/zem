@@ -1,12 +1,12 @@
-import re
+add serimport re
 
 class MarkdownExtractor:
     """
-    Class hỗ trợ trích xuất text từ các thành phần Markdown,
-    cho phép chỉnh sửa text (ví dụ: sửa lỗi chính tả) và tái tạo lại Markdown.
+    Class to support extracting text from Markdown components,
+    allowing text modification (e.g., spelling correction) and reconstructing Markdown.
     """
     def __init__(self):
-        # Regex patterns để nhận diện các thành phần nội tuyến (inline) cần bảo vệ
+        # Regex patterns to identify inline components that need protection
         self.inline_code_pattern = re.compile(r'(`[^`]+`)')
         self.link_pattern = re.compile(r'(\[[^\]]+\]\([^)]+\))')
         self.image_pattern = re.compile(r'(!\[[^\]]*\]\([^)]+\))')
@@ -15,34 +15,34 @@ class MarkdownExtractor:
 
     def _process_segment(self, text, corrector_func):
         """
-        Xử lý một đoạn text: bảo vệ các cấu trúc đặc biệt và sửa lỗi phần text còn lại.
+        Process a text segment: protect special structures and correct the remaining text.
         """
         if not text or not text.strip():
             return text
 
-        # Danh sách các phần tử cần bảo vệ (không sửa lỗi)
+        # List of elements to protect (do not correct)
         protected_segments = []
         
         def protect_match(match):
             protected_segments.append(match.group(0))
             return f"__PROTECTED_{len(protected_segments)-1}__"
 
-        # 1. Bảo vệ URL, Link, Image, Code, HTML
-        # Thứ tự quan trọng: Code -> Image/Link -> URL -> HTML
+        # 1. Protect URL, Link, Image, Code, HTML
+        # Important order: Code -> Image/Link -> URL -> HTML
         temp_text = self.inline_code_pattern.sub(protect_match, text)
         temp_text = self.image_pattern.sub(protect_match, temp_text)
         temp_text = self.link_pattern.sub(protect_match, temp_text)
         temp_text = self.url_pattern.sub(protect_match, temp_text)
         temp_text = self.html_tag_pattern.sub(protect_match, temp_text)
 
-        # 2. Sửa lỗi chính tả trên phần text còn lại
-        # Chỉ gọi corrector nếu còn text có ý nghĩa và không phải toàn bộ là protected
+        # 2. Correct spelling on the remaining text
+        # Only call corrector if there is meaningful text left and not entirely protected
         if temp_text.strip() and not re.match(r'^__PROTECTED_\d+__$', temp_text.strip()):
              corrected_text = corrector_func(temp_text)
         else:
              corrected_text = temp_text
 
-        # 3. Khôi phục các phần tử đã bảo vệ
+        # 3. Restore protected elements
         for i, segment in enumerate(protected_segments):
             corrected_text = corrected_text.replace(f"__PROTECTED_{i}__", segment)
 
@@ -50,14 +50,14 @@ class MarkdownExtractor:
 
     def extract_and_correct(self, markdown_content, corrector_func):
         """
-        Hàm chính: Duyệt qua từng dòng markdown, xác định thành phần, và áp dụng sửa lỗi.
+        Main function: Iterate through each markdown line, identify components, and apply correction.
         """
         lines = markdown_content.split('\n')
         result_lines = []
         in_code_block = False
 
         for line in lines:
-            # 1. Xử lý Code Block (```) - Giữ nguyên nội dung bên trong
+            # 1. Handle Code Block (```) - Keep content inside unchanged
             if line.strip().startswith('```'):
                 in_code_block = not in_code_block
                 result_lines.append(line)
@@ -67,12 +67,12 @@ class MarkdownExtractor:
                 result_lines.append(line)
                 continue
 
-            # 2. Bỏ qua dòng trống hoặc dòng kẻ ngang (---, ***)
+            # 2. Skip empty lines or horizontal rules (---, ***)
             if not line.strip() or re.match(r'^[-*_]{3,}$', line.strip()):
                 result_lines.append(line)
                 continue
 
-            # 3. Xử lý các thành phần Markdown theo dòng
+            # 3. Handle Markdown components line by line
             
             # Headers (#, ##, ...)
             header_match = re.match(r'^(#{1,6}\s+)(.*)', line)
@@ -99,12 +99,12 @@ class MarkdownExtractor:
                 continue
 
             # Tables (| ... |)
-            # Kiểm tra sơ bộ xem có phải dòng bảng không
+            # Preliminary check if it is a table row
             if '|' in line and re.match(r'^\s*\|.*\|\s*$', line):
                 parts = line.split('|')
                 corrected_parts = []
                 for part in parts:
-                    # Bỏ qua dòng phân cách tiêu đề bảng (---)
+                    # Skip table header separator line (---)
                     if re.match(r'^\s*:?-+:?\s*$', part):
                         corrected_parts.append(part)
                     else:
@@ -112,7 +112,7 @@ class MarkdownExtractor:
                 result_lines.append('|'.join(corrected_parts))
                 continue
 
-            # 4. Các dòng văn bản thông thường (Paragraph)
+            # 4. Normal text lines (Paragraph)
             result_lines.append(self._process_segment(line, corrector_func))
 
         return '\n'.join(result_lines)
