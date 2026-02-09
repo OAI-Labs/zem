@@ -96,6 +96,22 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+doc-parser = [
+    "dotenv>=0.9.9",
+    "ipython>=8.38.0",
+    "landingai-ade>=1.5.0",
+    "matplotlib>=3.10.8",
+    "numpy<2.0.0",
+    "pillow>=12.1.0",
+    "pymupdf>=1.26.7",
+    "pyyaml>=6.0.3",
+    "rich>=14.3.2",
+    "seaborn>=0.13.2",
+    "torch>=2.5.0",
+    "torchvision>=0.20.1",
+    "transformers>=4.55.2",
+]
+
 
 [project.scripts]
 zem = "xfmr_zem.cli:main"
