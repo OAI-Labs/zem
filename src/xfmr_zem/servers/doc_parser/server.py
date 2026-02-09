@@ -77,10 +77,8 @@ def parse_document(
         return []
 
     # Initialize Corrector
-    corrector_processor = None
     if use_corrector and corrector_config:
         logger.info("- Initializing corrector processor...")
-
         corrector_processor = corrector.make(corrector_config)
 
     markdown_extractor = MarkdownExtractor()
@@ -101,6 +99,7 @@ def parse_document(
             
             # Apply Corrector
             if corrector_processor:
+                logger.info("Apply Corrector to the parsed text")
                 markdown_content = markdown_extractor.extract_and_correct(
                     markdown_content,
                     corrector_processor.correct
@@ -108,7 +107,7 @@ def parse_document(
 
             # Keep only the parsed text (parser output), remove file path and bounding boxes
             all_results.append({"markdown": markdown_content})
-    return all_results
+    return server.save_output(all_results)
 
 if (__name__=="__main__"):
     server.run()
