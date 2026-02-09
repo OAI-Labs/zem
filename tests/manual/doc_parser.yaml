@@ -1,0 +1,11 @@
+name: doc_parser_pipeline
+
+servers:
+  parser: servers/doc_parser
+
+pipeline:
+  - name: parse_document
+    parser.parse_document:
+      input:
+        files_to_process: ['data/47-2026ndcp.signed_page_1.jpg']
+    cache: false
