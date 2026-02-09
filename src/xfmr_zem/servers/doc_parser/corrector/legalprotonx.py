@@ -1,6 +1,6 @@
 """
 File: /app/corrector/protonx.py
-Description: Wrapper class cho model sửa lỗi chính tả (Vietnamese Correction).
+Description: Wrapper class for spelling correction model (Vietnamese Correction).
 """
 
 import torch
@@ -14,16 +14,16 @@ from loguru import logger
 @register("legalprotonx")
 class VietnameseLegalCorrector:
     """
-    Class xử lý sửa lỗi chính tả tiếng Việt sử dụng model Seq2Seq.
+    Class handling Vietnamese spelling correction using Seq2Seq model.
     """
 
     def __init__(self, model_path: str, tokenizer: dict, seq2seq: dict, config_path: Optional[str] = None):
         """
-        Khởi tạo VietnameseCorrector.
+        Initialize VietnameseCorrector.
 
         Args:
-            model_path (str): Đường dẫn model hoặc tên model trên HuggingFace.
-            config_path (str, optional): Đường dẫn file config .yaml.
+            model_path (str): Model path or model name on HuggingFace.
+            config_path (str, optional): Path to .yaml config file.
         """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"🚀 Loading VietnameseCorrector model from: {model_path} ({self.device})")
@@ -71,20 +71,24 @@ class VietnameseLegalCorrector:
 
     def correct(self, text: str) -> str:
         """
-        Thực hiện sửa lỗi cho văn bản đầu vào.
+        Perform correction on input text.
 
         Args:
-            text (str): Văn bản cần sửa.
+            text (str): Text to be corrected.
 
         Returns:
-            str: Văn bản đã được sửa.
+            str: Corrected text.
         """
         if not text or not text.strip():
             return text
+
+        # logger.info(f"Start correcting text: {text[:10]}...")
 
         # 1. Tokenize
         inputs = self._tokenize(text)
         # 2. Generate
         outputs = self._generate(inputs)
         # 3. Decode
-        return self._decode(outputs)
+        corrected_text = self._decode(outputs)
+        # logger.info(f"Finished correcting text: {corrected_text[:10]}...")
+        return corrected_text

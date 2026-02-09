@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import List, Union, Dict, Any
 from dotenv import load_dotenv
+from loguru import logger  # <--- Import loguru ở đây
 
 # Imports specific to Agentic Document Extraction
 from landingai_ade import LandingAIADE
@@ -9,6 +10,9 @@ from landingai_ade.types import ParseResponse, ExtractResponse
 # Import helper class
 from ..helper import LandingVisualizer
 from .ocr import register
+
+# Với loguru, bạn không cần dòng logging.getLogger(__name__) nữa
+# logger được import trực tiếp và dùng được ngay
 
 @register("landingade")
 class LandingADE:
@@ -40,7 +44,8 @@ class LandingADE:
         for file_path in file_paths:
             path_obj = Path(file_path)
             if not path_obj.exists():
-                print(f"❌ File not found: {path_obj}")
+                # Loguru error
+                logger.error(f"❌ File not found: {path_obj}")
                 continue
             
             try:
@@ -65,6 +70,8 @@ class LandingADE:
                 })
 
             except Exception as e:
-                print(f"💥 Error processing {path_obj.name}: {e}")
+                # Loguru error. 
+                # Mẹo: Nếu muốn in cả stack trace (truy vết lỗi) đẹp, bạn có thể dùng logger.exception(...)
+                logger.error(f"💥 Error processing {path_obj.name}: {e}")
         
         return results
