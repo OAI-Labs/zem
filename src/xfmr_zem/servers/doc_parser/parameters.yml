@@ -1,0 +1,13 @@
+parse_document:
+  use_ocr: True
+  use_corrector: True
+
+  ocr_config: 
+    name: paddleocr
+    config: src/xfmr_zem/servers/doc_parser/model_config/paddleocr.yaml
+
+  corrector_config:
+    name: legalprotonx
+    config: src/xfmr_zem/servers/doc_parser/model_config/legalprotonx.yaml
+  batch_size: 4
+
