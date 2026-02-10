@@ -9,11 +9,14 @@ Quy trình xử lý của framework bao gồm các bước chính sau:
     Sử dụng mô hình OCR để trích xuất nội dung từ hình ảnh. Hiện tại hỗ trợ các phương án:
     *   **LandingADE**: Yêu cầu cấu hình `VISION_AGENT_API_KEY` (lấy từ landingai.com).
     *   **PaddleOCR**: Sử dụng thư viện PaddlePaddle.
+    *   **Input**: Một danh sách các dictionary (`List[Dict]`). Tool sẽ tìm trường có tên chứa chữ `path` để xác định đường dẫn file cần xử lý. `Field` là trường mà ta cần phải xử lý. 
+    *   **Output**: Trả về một danh sách các dictionary có chứa key `markdown` (ví dụ: `{'markdown': <text>}`).
 
 2.  **Sửa lỗi văn bản (Text Correction)**:
     Áp dụng mô hình ngôn ngữ để sửa lỗi chính tả và ngữ pháp cho văn bản đầu ra của OCR.
     *   Mô hình hiện tại: **legal-tc**.
-
+    *   **Input**: Một danh sách các dictionary (`List[Dict]`). Tool sẽ tìm trường có tên chứa chữ `markdown` để lấy nội dung văn bản cần sửa lỗi. `Field` là trường mà ta cần phải xử lý. 
+    *   **Output**: Trả về một danh sách các dictionary có chứa key `markdown` (ví dụ: `{'markdown': <text>}`).
 ## � Cài đặt & Lưu ý Dependencies
 
 Hiện tại do một số vấn đề về conflict trong dependencies nên bắt buộc phải cài đặt thủ công các gói sau để có thể sử dụng tool `doc_parser`:
@@ -45,7 +48,7 @@ Dựa trên phân tích trên, giải pháp được khuyến nghị là **áp d
 
 Thay vì đưa trực tiếp đầu ra OCR thô vào corrector, pipeline nên:
 1.  Trích xuất nội dung văn bản thuần túy từ Markdown.
-2.  Áp dụng Corrector Tiếng Việt để sửa lỗi chính tả (quan trọng đối với ảnh mờ/nhiễu).
+2.  Áp dụng Corrector Tiếng Việt để sửa lỗi chính tả (q uan trọng đối với ảnh mờ/nhiễu).
 
 ## 📊 Đánh giá & Hướng phát triển
 Để đánh giá và cải thiện hệ thống sâu hơn, em dự định tham khảo các bộ benchmark tiêu chuẩn như **OmniDocBench1.5** để kiểm thử toàn diện khả năng phân tích tài liệu.
