@@ -1,23 +1,21 @@
 name: doc_parser_pipeline
 
 servers:
-  ocr: src/xfmr_zem/servers/doc_parser/ocr.py
-  corrector: src/xfmr_zem/servers/doc_parser/corrector.py
+  ocr: servers/ocr
+  corrector: servers/corrector
 
 pipeline:
   - name: parse_document
-    ocr.landingai_ocr:
+    ocr.extract_text: 
       input:
         data: 
           - file_path: 'data/47-2026ndcp.signed_page_1.jpg'
-          - file_path: 'data/ITSELF_page_5.jpg'
-        field: "file_path"
-    cache: True
-
+        field: file_path
+    cache: False
   - name: correct_document
-    corrector.protonx_legal_markdown_corrector:
+    corrector.correct_text:
       input:
-        data: "$parse_document"
-        field: "markdown"
+        data: $parse_document
+        field: "text"
     cache: False
 
