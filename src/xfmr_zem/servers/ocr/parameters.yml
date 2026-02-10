@@ -1,6 +1,7 @@
 # Default parameters for OCR Server
 extract_text:
-  engine: "tesseract"
+  engine: paddle_vl
+  field: filepath
   model_id: null
   scanned_threshold: 50
   zoom: 2.0
