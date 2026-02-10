@@ -1,0 +1,4 @@
+correct_text:
+    field: text
+    engine: huggingface
+    model_id: protonx-models/protonx-legal-tc
