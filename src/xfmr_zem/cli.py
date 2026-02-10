@@ -381,6 +381,87 @@ def ocr_install():
     install_main()
 
 
+@main.group()
+def audio():
+    """Audio processing commands (Transcribe & Diarize)"""
+    pass
+
+
+@audio.command()
+@click.option("--input", "-i", type=click.Path(exists=True), required=True, help="Path to input audio file")
+@click.option("--output", "-o", type=click.Path(), required=True, help="Path to output file")
+@click.option("--format", "-f", type=click.Choice(["text", "json", "srt", "all"]), default="text", show_default=True, help="Output format")
+@click.option("--timestamps", "-t", is_flag=True, help="Include timestamps in text output")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
+@click.option("--padding", type=float, default=0.2, show_default=True, help="Padding collar in seconds")
+@click.option("--device", type=click.Choice(["cuda", "cpu"]), default="cuda", show_default=True, help="Device for inference")
+@click.option("--no-noise-reduction", is_flag=True, help="Disable noise reduction")
+@click.option("--no-cleanup", is_flag=True, help="Keep temporary files")
+@click.option("--hotwords", type=str, help="Comma-separated list of hotwords")
+@click.option("--context-score", type=float, default=2.0, show_default=True, help="Context score boost for hotwords")
+def transcribe(input, output, format, timestamps, verbose, padding, device, no_noise_reduction, no_cleanup, hotwords, context_score):
+    """Transcribe audio file with speaker diarization (Vietnamese)"""
+    try:
+        from xfmr_zem.audio.config import PipelineConfig
+        from xfmr_zem.audio.pipeline import create_pipeline
+    except ImportError as e:
+        console.print(f"[bold red]Error importing audio module:[/bold red] {e}")
+        console.print("[yellow]Please ensure you have installed the 'voice' optional dependencies:[/yellow]")
+        console.print("  pip install '.[voice]'")
+        sys.exit(1)
+
+    input_path = Path(input)
+    output_path = Path(output)
+
+    console.print(f"[bold green]Audio Transcribe & Diarization[/bold green]")
+    console.print(f"Input: {input_path}")
+    console.print(f"Output: {output_path}")
+
+    try:
+        # Create configuration
+        config = PipelineConfig()
+        
+        # Apply CLI arguments to config
+        config.slicer.collar_padding = padding
+        config.diarization.device = device
+        config.asr.device = device
+        config.preprocessing.enable_noise_reduction = not no_noise_reduction
+        config.cleanup_temp = not no_cleanup
+        config.verbose = verbose
+        config.output.format = format
+        config.output.include_timestamps = timestamps
+        
+        if hotwords:
+            config.asr.hotwords = [w.strip() for w in hotwords.split(",") if w.strip()]
+            config.asr.context_score = context_score
+            console.print(f"[cyan]Hotwords enabled:[/cyan] {config.asr.hotwords}")
+        
+        # Create and run pipeline
+        with console.status("[bold green]Running pipeline...[/bold green]"):
+            pipeline = create_pipeline(config)
+            transcript = pipeline.process(input_path, output_path)
+        
+        # Print summary
+        console.print(f"\n[bold blue]Transcription Summary:[/bold blue]")
+        console.print(f"  Total duration: {transcript.total_duration:.1f}s")
+        console.print(f"  Speakers: {transcript.speaker_count}")
+        console.print(f"  Turns: {len(transcript.turns)}")
+        
+        # Print transcript preview
+        if transcript.turns:
+            console.print("\n[bold]Transcript Preview (first 3 turns):[/bold]")
+            for turn in transcript.turns[:3]:
+                preview = turn.text[:100] + "..." if len(turn.text) > 100 else turn.text
+                console.print(f"  [cyan]{turn.speaker_label}[/cyan]: {preview}")
+            if len(transcript.turns) > 3:
+                console.print(f"  ... and {len(transcript.turns) - 3} more turns")
+                
+    except Exception as e:
+        logger.exception("An error occurred during pipeline execution")
+        console.print(f"[bold red]Error during processing:[/bold red] {e}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     main()
 
