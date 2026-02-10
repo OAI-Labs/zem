@@ -1,3 +1,0 @@
-Speaker 1: [Segment speaker_1: 30.0s audio] [Segment speaker_1: 9.2s audio]
-Speaker 2: [Segment speaker_0: 0.7s audio]
-Speaker 2: [Segment speaker_0: 0.8s audio]
