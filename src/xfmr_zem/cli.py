@@ -402,8 +402,8 @@ def audio():
 def transcribe(input, output, format, timestamps, verbose, padding, device, no_noise_reduction, no_cleanup, hotwords, context_score):
     """Transcribe audio file with speaker diarization (Vietnamese)"""
     try:
-        from xfmr_zem.audio.config import PipelineConfig
-        from xfmr_zem.audio.pipeline import create_pipeline
+        from xfmr_zem.servers.audio.config import PipelineConfig
+        from xfmr_zem.servers.audio.pipeline import create_pipeline
     except ImportError as e:
         console.print(f"[bold red]Error importing audio module:[/bold red] {e}")
         console.print("[yellow]Please ensure you have installed the 'voice' optional dependencies:[/yellow]")
