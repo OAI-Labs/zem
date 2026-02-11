@@ -100,7 +100,8 @@ def correct_text(
     data: Any,
     field: str = "text",
     engine: str = "huggingface",
-    model_id: str = "protonx-models/protonx-legal-tc"
+    model_id: str = "protonx-models/protonx-legal-tc",
+    verbose: bool = True # <--- [ADD 1] Thêm tham số verbose, mặc định là True
 ) -> Any:
     """
     Corrects markdown text using the configured LM engine.
@@ -109,19 +110,18 @@ def correct_text(
     items = items if isinstance(items, list) else [items]
     
     engine_name = engine
-    engine = CorrectorEngineFactory().get_engine(engine, model_id=model_id)
-    if not engine:
-        return server.save_output([
-            {
-                "text": item.get(field, ""),
-                "engine": engine_name,
-                "metadata": {"model_id": model_id, "field": field}
-            }
-            for item in items
-        ])
+    # Lưu ý: Sửa lại cách gọi Factory cho đúng static method (nếu Factory là static)
+    corrector_engine = CorrectorEngineFactory.get_engine(engine, model_id=model_id)
+    
+    if not corrector_engine:
+        logger.error(f"Failed to initialize engine: {engine_name}")
+        # Trả về items gốc nếu không load được engine
+        return server.save_output(items)
 
     all_results = []
-    for item in tqdm(items, desc="Processing Items"):
+    
+    # <--- [ADD 2] Sử dụng disable=not verbose để điều khiển tqdm
+    for item in tqdm(items, desc="Processing Items", disable=not verbose):
         result_entry = {
             "text": "",
             "engine": engine_name,
@@ -129,24 +129,35 @@ def correct_text(
         }
         try:
             if not isinstance(item, dict) or field not in item:
-                raise KeyError(f"Field '{field}' missing in item data")
+                # Nếu item lỗi, log warning nhưng không crash luồng
+                logger.warning(f"Skipping item: Field '{field}' missing")
+                result_entry["text"] = str(item)
+                all_results.append(result_entry)
+                continue
 
             raw_text = item.get(field, "")
+            
+            # Kiểm tra raw_text
             if not isinstance(raw_text, str):
-                raise ValueError(f"Content of '{field}' is not a string")
+                raw_text = str(raw_text)
 
             if not raw_text.strip():
                 result_entry["text"] = raw_text
             else:
-                corrected_text = process_markdown_text(raw_text, engine)
+                # Gọi hàm xử lý với engine đã khởi tạo
+                corrected_text = process_markdown_text(raw_text, corrector_engine)
                 result_entry["text"] = corrected_text
+                
         except Exception as e:
             logger.warning(f"Error processing item: {e}")
             result_entry["text"] = item.get(field, "") if isinstance(item, dict) else ""
+            
         all_results.append(result_entry)
 
-    logger.info(f"Output results: {all_results}")
+    if verbose:
+        logger.info(f"Processed {len(all_results)} items.")
+        
     return server.save_output(all_results)
-
+    
 if __name__ == "__main__":
     server.run()
