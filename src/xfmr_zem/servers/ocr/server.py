@@ -90,7 +90,7 @@ def extract_text(
     engine: str = "paddle_vl", 
     model_id: str = None,
     temp_dir: str = "/tmp",
-    max_workers: int = 4, # [ADD] Tham số điều chỉnh số luồng
+    max_workers: int = 1, # [ADD] Tham số điều chỉnh số luồng
 ) -> Any:
     """
     Extracts text from an image using the specified OCR engine with Multi-threading.
