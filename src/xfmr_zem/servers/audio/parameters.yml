@@ -1,0 +1,8 @@
+transcribe:
+  model: "program_vn_iter3"
+  batch_size: 1
+  hotwords: ""
+
+diarize:
+  num_speakers: 0 # 0 for auto
+  output_rttm: ""

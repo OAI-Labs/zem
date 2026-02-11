@@ -77,9 +77,29 @@ class VieASRTranscriber(ITranscriber):
         self._fbank = None
         self._params = None
         
-        # Model paths
-        self.model_dir = _ASR_DIR / "models" / "viet_iter3_pseudo_label"
-        self.checkpoint_path = self.model_dir / "exp" / "epoch-12.pt"
+        # Determine model paths
+        # Priority: Config > Cache Dir > Error
+        
+        base_dir = Path.home() / ".cache" / "xfmr_zem" / "audio" / "models" / "viet_iter3_pseudo_label"
+        
+        if config.checkpoint_path:
+             self.model_dir = config.checkpoint_path.parent.parent # Assuming structure
+             # Actually, if checkpoint is provided, rely on it.
+             # But VieASR needs specific structure (data/tokens.txt, etc.)
+             # We assume if checkpoint_path is provided, it points to `exp/epoch-xx.pt` inside a valid structure.
+             self.model_dir = config.checkpoint_path.parent.parent
+        elif base_dir.exists():
+             self.model_dir = base_dir
+        else:
+             # Fallback to relative path for backward compatibility if it exists
+             local_path = Path(__file__).parent / "models" / "viet_iter3_pseudo_label"
+             if local_path.exists():
+                 self.model_dir = local_path
+             else:
+                 # We set a default but it will fail validation later if not found
+                 self.model_dir = base_dir
+
+        self.checkpoint_path = self.config.checkpoint_path or (self.model_dir / "exp" / "epoch-12.pt")
         self.tokens_path = self.model_dir / "data" / "Vietnam_bpe_2000_new" / "tokens.txt"
         self.bpe_model_path = self.model_dir / "data" / "Vietnam_bpe_2000_new" / "bpe.model"
         self._temp_dir = None

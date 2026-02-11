@@ -1,0 +1,37 @@
+name: audio_pipeline_test
+version: 1.0.0
+description: "Test pipeline for the Audio MCP server (Transcribe + Diarize)"
+
+# Define where our data comes from
+# In a real scenario, this could be a CSV/Parquet with 'audio_path' column
+# Here we define a simple inline data source or we can mock it
+# Note: ZenML/Zem logic would usually handle `source` loading.
+# If we run this via `zem run`, it expects steps.
+
+steps:
+  - name: load_data
+    tool: zem.loader
+    args:
+      # We will provide a dummy file or list for testing
+      data: 
+        - audio_path: "./tests/data/sample_audio.wav"
+          id: "test_01"
+
+  - name: transcribe_audio
+    tool: audio.transcribe
+    args:
+      audio_column: "audio_path"
+      text_column: "transcript"
+      model: "program_vn_iter3"
+
+  - name: diarize_audio
+    tool: audio.diarize
+    args:
+      audio_column: "audio_path"
+      output_dir: "./tests/output/rttm"
+      speakers_column: "speaker_count"
+
+  - name: inspect_results
+    tool: zem.sink.console
+    args:
+      limit: 5
