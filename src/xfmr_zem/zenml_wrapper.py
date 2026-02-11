@@ -244,6 +244,10 @@ def mcp_generic_step(
 def _extract_dvc_metadata(tool_args: Dict[str, Any], server_name: str, tool_name: str) -> Dict[str, Any]:
     """
     Extract DVC metadata from tool arguments containing data paths.
+    
+    Detection strategy (in priority order):
+      1. Explicit ``dvc_track_paths`` list in tool_args  (user-defined, most reliable)
+      2. Heuristic scan of well-known keys with strict path validation
     """
     metadata = {
         "input_data": [],
@@ -251,33 +255,53 @@ def _extract_dvc_metadata(tool_args: Dict[str, Any], server_name: str, tool_name
         "git_branch": DVCMetadataExtractor.get_git_branch(),
     }
     
-    # Check for data paths in tool_args
-    data_keys = ["data", "path", "file_path", "input_path", "data_path"]
+    # --- Strategy 1: explicit paths from user ---
+    explicit_paths: List[str] = tool_args.pop("dvc_track_paths", [])
+    if isinstance(explicit_paths, str):
+        explicit_paths = [explicit_paths]
     
-    for key in data_keys:
-        if key in tool_args:
+    # --- Strategy 2: heuristic scan (fallback) ---
+    if not explicit_paths:
+        _KNOWN_DATA_KEYS = {"data", "path", "file_path", "input_path", "data_path", "output_path"}
+        for key in _KNOWN_DATA_KEYS:
+            if key not in tool_args:
+                continue
             value = tool_args[key]
             
             # Handle reference dict with path
             if isinstance(value, dict) and "path" in value:
-                path = value["path"]
-            elif isinstance(value, str) and os.path.exists(value):
-                path = value
+                candidate = value["path"]
+            elif isinstance(value, str):
+                candidate = value
             else:
                 continue
             
-            # Extract DVC hash
-            dvc_hash = DVCMetadataExtractor.get_dvc_hash(path)
-            file_stats = DVCMetadataExtractor.get_file_stats(path)
+            # Strict validation: must look like a file path AND exist on disk
+            if not isinstance(candidate, str):
+                continue
+            if not os.path.sep in candidate and "." not in candidate:
+                continue  # plain strings like "hello" are not paths
+            if not os.path.exists(candidate):
+                continue
             
-            metadata["input_data"].append({
-                "key": key,
-                "path": path,
-                "dvc_hash": dvc_hash,
-                "dvc_tracked": os.path.exists(f"{path}.dvc"),
-                "size": file_stats.get("size_human"),
-                "type": file_stats.get("type"),
-            })
+            explicit_paths.append(candidate)
+    
+    # --- Build metadata for validated paths ---
+    for path in explicit_paths:
+        if not os.path.exists(path):
+            logger.debug(f"[DVC] Skipping non-existent path: {path}")
+            continue
+        
+        dvc_hash = DVCMetadataExtractor.get_dvc_hash(path)
+        file_stats = DVCMetadataExtractor.get_file_stats(path)
+        
+        metadata["input_data"].append({
+            "path": path,
+            "dvc_hash": dvc_hash,
+            "dvc_tracked": os.path.exists(f"{path}.dvc"),
+            "size": file_stats.get("size_human"),
+            "type": file_stats.get("type"),
+        })
     
     return metadata if metadata["input_data"] else {}
 

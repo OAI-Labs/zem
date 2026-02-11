@@ -75,8 +75,6 @@ def list_tools(config):
 def init(project_name: str, no_dvc: bool, no_git: bool, dvc_remote: str,
          minio_endpoint: str, minio_bucket: str, minio_access_key: str, minio_secret_key: str):
     """Bootstrap a new Zem project structure with Git and DVC."""
-    import subprocess
-    
     base_path = Path(project_name)
     if base_path.exists():
         console.print(f"[bold red]Error:[/bold red] Path '{project_name}' already exists.")
@@ -171,23 +169,22 @@ outputs/
     # Initialize Git
     if not no_git:
         console.print("\n[bold]Initializing Git...[/bold]")
-        result = subprocess.run(
-            ["git", "init"],
-            cwd=base_path,
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
+        result = _run_cmd(["git", "init"], cwd=base_path)
+        if result.returncode == 127:
+            console.print("[yellow]⚠[/yellow] Git not found. Skipping Git initialization.")
+        elif result.returncode == 0:
             console.print("[green]✓[/green] Git initialized")
             
             # Initial commit
-            subprocess.run(["git", "add", "."], cwd=base_path, capture_output=True)
-            subprocess.run(
+            _run_cmd(["git", "add", "."], cwd=base_path)
+            commit_result = _run_cmd(
                 ["git", "commit", "-m", "Initial commit: Zem project setup"],
                 cwd=base_path,
-                capture_output=True
             )
-            console.print("[green]✓[/green] Created initial commit")
+            if commit_result.returncode == 0:
+                console.print("[green]✓[/green] Created initial commit")
+            else:
+                console.print(f"[yellow]⚠[/yellow] Initial commit failed: {commit_result.stderr.strip()}")
         else:
             console.print(f"[yellow]⚠[/yellow] Git init failed: {result.stderr.strip()}")
 
@@ -196,18 +193,13 @@ outputs/
         console.print("\n[bold]Initializing DVC for data versioning...[/bold]")
         
         # Check if DVC is installed
-        dvc_check = subprocess.run(["which", "dvc"], capture_output=True, text=True)
-        if dvc_check.returncode != 0:
+        dvc_check = _run_cmd(["dvc", "version"])
+        if dvc_check.returncode == 127:
             console.print("[yellow]⚠[/yellow] DVC not found. Install with: [cyan]uv tool install dvc --with dvc-s3 --with boto3[/cyan]")
             console.print("[dim]Skipping DVC initialization...[/dim]")
         else:
             # Initialize DVC
-            result = subprocess.run(
-                ["dvc", "init"],
-                cwd=base_path,
-                capture_output=True,
-                text=True
-            )
+            result = _run_cmd(["dvc", "init"], cwd=base_path)
             if result.returncode == 0:
                 console.print("[green]✓[/green] DVC initialized")
                 
@@ -227,12 +219,15 @@ __pycache__/
                 if dvc_remote == "local":
                     local_storage = base_path / ".dvc-storage"
                     local_storage.mkdir(exist_ok=True)
-                    subprocess.run(
+                    r = _run_cmd(
                         ["dvc", "remote", "add", "-d", "local", str(local_storage.absolute())],
                         cwd=base_path,
-                        capture_output=True
                     )
-                    console.print(f"[green]✓[/green] DVC local remote configured: {local_storage}")
+                    if r.returncode == 0:
+                        console.print(f"[green]✓[/green] DVC local remote configured: {local_storage}")
+                    else:
+                        console.print(f"[yellow]⚠[/yellow] DVC remote add failed: {r.stderr.strip()}")
+                        
                 elif dvc_remote == "minio":
                     # Resolve config: CLI option > env var > default
                     endpoint = minio_endpoint or "http://localhost:8811"
@@ -241,51 +236,38 @@ __pycache__/
                     secret_key = minio_secret_key
                     
                     # Remote URL + endpoint (committed to git - safe, no secrets)
-                    subprocess.run(
-                        ["dvc", "remote", "add", "-d", "minio", bucket],
-                        cwd=base_path,
-                        capture_output=True
-                    )
-                    subprocess.run(
-                        ["dvc", "remote", "modify", "minio", "endpointurl", endpoint],
-                        cwd=base_path,
-                        capture_output=True
-                    )
+                    r1 = _run_cmd(["dvc", "remote", "add", "-d", "minio", bucket], cwd=base_path)
+                    r2 = _run_cmd(["dvc", "remote", "modify", "minio", "endpointurl", endpoint], cwd=base_path)
                     
-                    # Credentials in local config (NOT committed to git)
-                    if access_key and secret_key:
-                        subprocess.run(
-                            ["dvc", "remote", "modify", "--local", "minio", "access_key_id", access_key],
-                            cwd=base_path,
-                            capture_output=True
-                        )
-                        subprocess.run(
-                            ["dvc", "remote", "modify", "--local", "minio", "secret_access_key", secret_key],
-                            cwd=base_path,
-                            capture_output=True
-                        )
-                        console.print("[green]✓[/green] DVC MinIO remote configured:")
-                        console.print(f"    Endpoint: [cyan]{endpoint}[/cyan]")
-                        console.print(f"    Bucket:   [cyan]{bucket}[/cyan]")
-                        console.print("[dim]    Credentials stored in .dvc/config.local (not committed)[/dim]")
+                    if r1.returncode != 0 or r2.returncode != 0:
+                        err = r1.stderr.strip() or r2.stderr.strip()
+                        console.print(f"[yellow]⚠[/yellow] DVC remote config failed: {err}")
                     else:
-                        console.print("[green]✓[/green] DVC MinIO remote configured:")
-                        console.print(f"    Endpoint: [cyan]{endpoint}[/cyan]")
-                        console.print(f"    Bucket:   [cyan]{bucket}[/cyan]")
-                        console.print("[yellow]⚠[/yellow] Credentials not set. Configure with:")
-                        console.print("    [cyan]dvc remote modify --local minio access_key_id YOUR_KEY[/cyan]")
-                        console.print("    [cyan]dvc remote modify --local minio secret_access_key YOUR_SECRET[/cyan]")
-                        console.print("[dim]    Or set env vars: DVC_MINIO_ACCESS_KEY, DVC_MINIO_SECRET_KEY[/dim]")
+                        # Credentials in local config (NOT committed to git)
+                        if access_key and secret_key:
+                            _run_cmd(["dvc", "remote", "modify", "--local", "minio", "access_key_id", access_key], cwd=base_path)
+                            _run_cmd(["dvc", "remote", "modify", "--local", "minio", "secret_access_key", secret_key], cwd=base_path)
+                            console.print("[green]✓[/green] DVC MinIO remote configured:")
+                            console.print(f"    Endpoint: [cyan]{endpoint}[/cyan]")
+                            console.print(f"    Bucket:   [cyan]{bucket}[/cyan]")
+                            console.print("[dim]    Credentials stored in .dvc/config.local (not committed)[/dim]")
+                        else:
+                            console.print("[green]✓[/green] DVC MinIO remote configured:")
+                            console.print(f"    Endpoint: [cyan]{endpoint}[/cyan]")
+                            console.print(f"    Bucket:   [cyan]{bucket}[/cyan]")
+                            console.print("[yellow]⚠[/yellow] Credentials not set. Configure with:")
+                            console.print("    [cyan]dvc remote modify --local minio access_key_id YOUR_KEY[/cyan]")
+                            console.print("    [cyan]dvc remote modify --local minio secret_access_key YOUR_SECRET[/cyan]")
+                            console.print("[dim]    Or set env vars: DVC_MINIO_ACCESS_KEY, DVC_MINIO_SECRET_KEY[/dim]")
                 
                 # Commit DVC setup
                 if not no_git:
-                    subprocess.run(["git", "add", ".dvc", ".dvcignore"], cwd=base_path, capture_output=True)
-                    subprocess.run(
-                        ["git", "commit", "-m", "Setup DVC for data versioning"],
-                        cwd=base_path,
-                        capture_output=True
-                    )
-                    console.print("[green]✓[/green] Committed DVC configuration")
+                    _run_cmd(["git", "add", ".dvc", ".dvcignore"], cwd=base_path)
+                    cr = _run_cmd(["git", "commit", "-m", "Setup DVC for data versioning"], cwd=base_path)
+                    if cr.returncode == 0:
+                        console.print("[green]✓[/green] Committed DVC configuration")
+                    else:
+                        console.print(f"[yellow]⚠[/yellow] DVC commit failed: {cr.stderr.strip()}")
             else:
                 console.print(f"[yellow]⚠[/yellow] DVC init failed: {result.stderr.strip()}")
 
@@ -585,6 +567,39 @@ def ocr_install():
 
 
 # =============================================================================
+# Subprocess helpers
+# =============================================================================
+
+def _run_cmd(cmd: list, cwd=None, check: bool = False) -> "subprocess.CompletedProcess":
+    """
+    Run a subprocess with consistent error handling.
+    
+    Args:
+        cmd: Command and arguments list
+        cwd: Working directory
+        check: If True, raise on non-zero exit code
+        
+    Returns:
+        CompletedProcess instance (always has .returncode, .stdout, .stderr)
+    """
+    import subprocess as _sp
+    import shutil
+    
+    # Verify the executable exists before running
+    exe = cmd[0]
+    if not shutil.which(exe):
+        # Return a fake CompletedProcess so callers can check .returncode
+        return _sp.CompletedProcess(cmd, returncode=127, stdout="", stderr=f"{exe}: command not found")
+    
+    result = _sp.run(cmd, cwd=cwd, capture_output=True, text=True)
+    
+    if check and result.returncode != 0:
+        raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}\n{result.stderr}")
+    
+    return result
+
+
+# =============================================================================
 # DVC Data Versioning Commands
 # =============================================================================
 
@@ -599,40 +614,36 @@ def data():
 @click.option("--remote-url", help="Remote storage URL (e.g., s3://bucket-name)")
 def data_init(remote, remote_url):
     """Initialize DVC for data versioning in current project."""
-    import subprocess
-    
     console.print("[bold blue]🔧 Initializing DVC for Data Versioning...[/bold blue]")
     
     # Check if DVC is installed
-    try:
-        result = subprocess.run(["dvc", "version"], capture_output=True, text=True)
-        if result.returncode != 0:
-            console.print("[bold red]Error:[/bold red] DVC not found. Install with: uv tool install dvc --with dvc-s3 --with boto3")
-            return
-        console.print(f"[dim]DVC version: {result.stdout.strip().split()[0] if result.stdout else 'unknown'}[/dim]")
-    except FileNotFoundError:
+    result = _run_cmd(["dvc", "version"])
+    if result.returncode == 127:
         console.print("[bold red]Error:[/bold red] DVC not found. Install with: uv tool install dvc --with dvc-s3 --with boto3")
         return
+    if result.returncode != 0:
+        console.print(f"[bold red]Error:[/bold red] {result.stderr.strip()}")
+        return
+    console.print(f"[dim]DVC version: {result.stdout.strip().split()[0] if result.stdout else 'unknown'}[/dim]")
     
     # Initialize DVC
-    try:
-        result = subprocess.run(["dvc", "init"], capture_output=True, text=True)
-        if result.returncode == 0:
-            console.print("[green]✓[/green] DVC initialized successfully")
-        elif "already initialized" in result.stderr.lower():
-            console.print("[yellow]⚠[/yellow] DVC already initialized")
-        else:
-            console.print(f"[red]✗[/red] DVC init failed: {result.stderr}")
-            return
-    except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+    result = _run_cmd(["dvc", "init"])
+    if result.returncode == 0:
+        console.print("[green]✓[/green] DVC initialized successfully")
+    elif "already initialized" in result.stderr.lower():
+        console.print("[yellow]⚠[/yellow] DVC already initialized")
+    else:
+        console.print(f"[red]✗[/red] DVC init failed: {result.stderr}")
         return
     
     # Setup remote
     if remote == "local":
         remote_url = remote_url or "/tmp/dvc-storage"
-        subprocess.run(["dvc", "remote", "add", "-d", "local", remote_url], capture_output=True)
-        console.print(f"[green]✓[/green] Local remote configured: {remote_url}")
+        r = _run_cmd(["dvc", "remote", "add", "-d", "local", remote_url])
+        if r.returncode == 0:
+            console.print(f"[green]✓[/green] Local remote configured: {remote_url}")
+        else:
+            console.print(f"[yellow]⚠[/yellow] Remote config failed: {r.stderr.strip()}")
     elif remote == "minio":
         if not remote_url:
             console.print("[yellow]⚠[/yellow] MinIO remote URL not provided. Configure manually:")
@@ -641,9 +652,12 @@ def data_init(remote, remote_url):
             console.print("  dvc remote modify minio access_key_id YOUR_KEY")
             console.print("  dvc remote modify minio secret_access_key YOUR_SECRET")
         else:
-            subprocess.run(["dvc", "remote", "add", "-d", "minio", remote_url], capture_output=True)
-            console.print(f"[green]✓[/green] MinIO remote configured: {remote_url}")
-            console.print("[yellow]Note:[/yellow] Configure credentials with dvc remote modify")
+            r = _run_cmd(["dvc", "remote", "add", "-d", "minio", remote_url])
+            if r.returncode == 0:
+                console.print(f"[green]✓[/green] MinIO remote configured: {remote_url}")
+                console.print("[yellow]Note:[/yellow] Configure credentials with dvc remote modify")
+            else:
+                console.print(f"[yellow]⚠[/yellow] Remote config failed: {r.stderr.strip()}")
     
     # Create .dvcignore if not exists
     dvcignore_path = Path(".dvcignore")
@@ -678,12 +692,13 @@ dist/
 @click.option("--message", "-m", help="Commit message for git")
 def data_add(path, message):
     """Track a file or directory with DVC."""
-    import subprocess
-    
     console.print(f"[bold blue]📦 Tracking data: {path}[/bold blue]")
     
     # Add to DVC
-    result = subprocess.run(["dvc", "add", path], capture_output=True, text=True)
+    result = _run_cmd(["dvc", "add", path])
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found. Install with: uv tool install dvc --with dvc-s3 --with boto3")
+        return
     if result.returncode != 0:
         console.print(f"[bold red]Error:[/bold red] {result.stderr}")
         return
@@ -696,39 +711,44 @@ def data_add(path, message):
     if dvc_hash:
         console.print(f"[dim]DVC Hash: {dvc_hash}[/dim]")
     
-    # Git add the .dvc file
-    dvc_file = f"{path}.dvc"
-    gitignore_file = f"{Path(path).parent}/.gitignore" if Path(path).parent != Path(".") else ".gitignore"
+    # Git add the .dvc file (only if inside a git repo)
+    is_git = _run_cmd(["git", "rev-parse", "--is-inside-work-tree"]).returncode == 0
     
-    subprocess.run(["git", "add", dvc_file], capture_output=True)
-    if Path(gitignore_file).exists():
-        subprocess.run(["git", "add", gitignore_file], capture_output=True)
-    
-    console.print(f"[green]✓[/green] Staged for git: {dvc_file}")
-    
-    if message:
-        result = subprocess.run(["git", "commit", "-m", message], capture_output=True, text=True)
-        if result.returncode == 0:
-            console.print(f"[green]✓[/green] Committed: {message}")
-        else:
-            # Git outputs "nothing to commit" to stdout, other errors to stderr
-            err_msg = result.stderr.strip() or result.stdout.strip()
-            console.print(f"[yellow]⚠[/yellow] Git commit: {err_msg}")
+    if is_git:
+        dvc_file = f"{path}.dvc"
+        gitignore_file = f"{Path(path).parent}/.gitignore" if Path(path).parent != Path(".") else ".gitignore"
+        
+        _run_cmd(["git", "add", dvc_file])
+        if Path(gitignore_file).exists():
+            _run_cmd(["git", "add", gitignore_file])
+        
+        console.print(f"[green]✓[/green] Staged for git: {dvc_file}")
+        
+        if message:
+            result = _run_cmd(["git", "commit", "-m", message])
+            if result.returncode == 0:
+                console.print(f"[green]✓[/green] Committed: {message}")
+            else:
+                err_msg = result.stderr.strip() or result.stdout.strip()
+                console.print(f"[yellow]⚠[/yellow] Git commit: {err_msg}")
+    else:
+        console.print("[dim]Skipping git stage (not a git repository)[/dim]")
 
 
 @data.command(name="push")
 @click.option("--remote", "-r", help="Remote name to push to")
 def data_push(remote):
     """Push tracked data to remote storage."""
-    import subprocess
-    
     console.print("[bold blue]⬆️  Pushing data to remote...[/bold blue]")
     
     cmd = ["dvc", "push"]
     if remote:
         cmd.extend(["-r", remote])
     
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = _run_cmd(cmd)
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found.")
+        return
     if result.returncode == 0:
         console.print("[green]✓[/green] Data pushed successfully")
         if result.stdout:
@@ -741,15 +761,16 @@ def data_push(remote):
 @click.option("--remote", "-r", help="Remote name to pull from")
 def data_pull(remote):
     """Pull tracked data from remote storage."""
-    import subprocess
-    
     console.print("[bold blue]⬇️  Pulling data from remote...[/bold blue]")
     
     cmd = ["dvc", "pull"]
     if remote:
         cmd.extend(["-r", remote])
     
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = _run_cmd(cmd)
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found.")
+        return
     if result.returncode == 0:
         console.print("[green]✓[/green] Data pulled successfully")
         if result.stdout:
@@ -761,12 +782,13 @@ def data_pull(remote):
 @data.command(name="status")
 def data_status():
     """Show DVC data status and tracked files."""
-    import subprocess
-    
     console.print("[bold blue]📊 DVC Data Status[/bold blue]\n")
     
     # Show remotes
-    result = subprocess.run(["dvc", "remote", "list"], capture_output=True, text=True)
+    result = _run_cmd(["dvc", "remote", "list"])
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found.")
+        return
     if result.returncode == 0 and result.stdout.strip():
         console.print("[bold]Configured Remotes:[/bold]")
         for line in result.stdout.strip().split("\n"):
@@ -777,7 +799,7 @@ def data_status():
     console.print()
     
     # Show status
-    result = subprocess.run(["dvc", "status"], capture_output=True, text=True)
+    result = _run_cmd(["dvc", "status"])
     if result.returncode == 0:
         if result.stdout.strip():
             console.print("[bold]Data Status:[/bold]")

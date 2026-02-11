@@ -50,16 +50,23 @@ class DVCMetadataExtractor:
     - Create comprehensive lineage metadata
     """
     
+    # Max size (bytes) for manual hash computation. Files/dirs larger than this
+    # will return None instead of blocking the pipeline. Default: 2 GB.
+    MAX_HASH_SIZE: int = 2 * 1024 * 1024 * 1024
+
     @staticmethod
     def get_dvc_hash(file_path: str) -> Optional[str]:
         """
         Extract MD5 hash from .dvc file or compute for raw file.
         
+        Priority: .dvc file hash > manual computation (with size limit).
+        Files/dirs exceeding MAX_HASH_SIZE without a .dvc file will return None.
+        
         Args:
             file_path: Path to the data file (not the .dvc file)
             
         Returns:
-            MD5 hash string or None if file doesn't exist
+            MD5 hash string or None if file doesn't exist or exceeds size limit
             
         Example:
             >>> DVCMetadataExtractor.get_dvc_hash("data/train.parquet")
@@ -67,7 +74,7 @@ class DVCMetadataExtractor:
         """
         dvc_file = Path(str(file_path) + ".dvc")
         
-        # Try to read from .dvc file first
+        # Try to read from .dvc file first (fast path - no I/O on data)
         if dvc_file.exists():
             try:
                 with open(dvc_file, "r") as f:
@@ -81,11 +88,19 @@ class DVCMetadataExtractor:
             except Exception as e:
                 logger.warning(f"Error reading .dvc file {dvc_file}: {e}")
         
-        # Compute hash for non-DVC tracked files
+        # Fallback: compute hash manually (with size guard)
         file_path_obj = Path(file_path)
         if file_path_obj.exists():
             if file_path_obj.is_dir():
                 return DVCMetadataExtractor._compute_dir_hash(file_path)
+            # Single file size guard
+            file_size = file_path_obj.stat().st_size
+            if file_size > DVCMetadataExtractor.MAX_HASH_SIZE:
+                logger.warning(
+                    f"File {file_path} ({file_size / 1e9:.1f} GB) exceeds MAX_HASH_SIZE. "
+                    f"Track with 'zem data add' first for fast hash lookup."
+                )
+                return None
             return DVCMetadataExtractor._compute_md5(file_path)
         
         logger.warning(f"File not found: {file_path}")
@@ -110,30 +125,45 @@ class DVCMetadataExtractor:
         return hash_md5.hexdigest()
     
     @staticmethod
-    def _compute_dir_hash(dir_path: str) -> str:
+    def _compute_dir_hash(dir_path: str) -> Optional[str]:
         """
         Compute combined hash for a directory.
+        
+        Uses file names + sizes as a lightweight fingerprint instead of reading
+        every byte. For exact content hashes, track the directory with DVC first
+        (``zem data add <dir>``), which stores the authoritative hash in the
+        ``.dvc`` file and is read by :meth:`get_dvc_hash` without any I/O on
+        the data itself.
         
         Args:
             dir_path: Path to the directory
             
         Returns:
-            Combined MD5 hash of all files
+            Combined MD5 hash string (suffixed with ``.dir``), or None if the
+            directory exceeds MAX_HASH_SIZE.
         """
-        hash_md5 = hashlib.md5()
         dir_path_obj = Path(dir_path)
-        
+
+        # Compute total size first to enforce the size guard
+        total_size = sum(f.stat().st_size for f in dir_path_obj.rglob("*") if f.is_file())
+        if total_size > DVCMetadataExtractor.MAX_HASH_SIZE:
+            logger.warning(
+                f"Directory {dir_path} ({total_size / 1e9:.1f} GB) exceeds MAX_HASH_SIZE. "
+                f"Track with 'zem data add' first for fast hash lookup."
+            )
+            return None
+
+        hash_md5 = hashlib.md5()
+
         # Sort files for consistent hashing
         files = sorted(dir_path_obj.rglob("*"))
         for file_path in files:
             if file_path.is_file():
-                # Include relative path in hash for structure awareness
                 rel_path = file_path.relative_to(dir_path_obj)
+                # Include relative path + size for structure/content awareness
                 hash_md5.update(str(rel_path).encode())
-                
-                # Include file content hash
-                file_hash = DVCMetadataExtractor._compute_md5(str(file_path))
-                hash_md5.update(file_hash.encode())
+                hash_md5.update(str(file_path.stat().st_size).encode())
+                hash_md5.update(str(file_path.stat().st_mtime_ns).encode())
         
         return hash_md5.hexdigest() + ".dir"
     
