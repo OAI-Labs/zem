@@ -77,6 +77,42 @@ uv run zem preview <artifact_id> --sample --limit 5
 
 ---
 
+## 📦 Data Versioning (DVC)
+
+Zem tích hợp sẵn DVC để quản lý phiên bản dữ liệu lớn, sử dụng MinIO (S3-compatible) làm remote storage.
+
+### Cấu hình credentials
+
+```bash
+export DVC_MINIO_ENDPOINT=
+export DVC_MINIO_BUCKET=
+export DVC_MINIO_ACCESS_KEY=
+export DVC_MINIO_SECRET_KEY=
+```
+
+### Workflow
+
+```bash
+# Khởi tạo project với DVC + MinIO
+uv run zem init my_project --dvc-remote minio
+
+# Track dataset
+cd my_project
+uv run zem data add data/dataset.parquet -m "add training data v1"
+
+# Push lên remote / Pull về
+uv run zem data push
+uv run zem data pull
+
+# Kiểm tra trạng thái & lineage
+uv run zem data status
+uv run zem data lineage data/dataset.parquet
+```
+
+DVC metadata (hash, git commit) được tự động log vào ZenML artifact khi pipeline chạy, đảm bảo truy xuất đúng data version cho mỗi experiment.
+
+---
+
 ## 📖 Guided Documentation
 
 | Topic | Description | Link |

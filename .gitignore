@@ -69,3 +69,11 @@ src/xfmr_zem/servers/ocr/deepdoc_vietocr/vietocr/weight/*.onnx
 
 # ZenML
 .zen/
+
+# DVC
+# Note: .dvc files should be tracked by git
+# Data files are auto-added to .gitignore by DVC
+/tmp/zem_artifacts/
+.dvc/config.local
+.dvc/tmp/
+.dvc/cache/
