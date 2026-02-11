@@ -9,7 +9,7 @@ from loguru import logger
 from PIL import Image
 
 # Initialize ZemServer for OCR
-mcp = ZemServer("ocr", parameter_file=os.path.join(os.path.dirname(__file__), "parameters.yml"))
+mcp = ZemServer("ocr")
 
 def extract_pdf_pages(
     file_path: str,
