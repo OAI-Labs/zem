@@ -1,19 +1,34 @@
 # Test configuration for OCR Module
 name: ocr_pipeline
-correlator: xfmr-zem
 
 servers:
   ocr: servers/ocr
+  corrector: servers/corrector
+  unstructured: servers/unstructured
 
 pipeline:
-  - name: heavy_ocr_paddle
+  - name: extract_pdf
+    unstructured.extract_pdf_pages:
+      data:
+        - file_path: data/LACDNet.pdf
+      field: file_path
+      zoom: 2.0
+
+
+  - name: parse_document
     ocr.extract_text:
-      file_path: "data/ocr_test.png"
-      engine: "paddle"
+      data: $extract_pdf
+      engine: paddle_vl
+      field: image_base64
+      mode: base64
+      max_workers: 1
     cache: false
 
-  - name: light_ocr_tesseract
-    ocr.extract_text:
-      file_path: "data/ocr_test.png"
-      engine: "tesseract"
+  - name: correct_text
+    corrector.correct_text:
+      data: $parse_document
+      field: text
     cache: false
+        
+
+
