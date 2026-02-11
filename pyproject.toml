@@ -110,6 +110,8 @@ voice = [
     "torchinfo>=1.8.0",
     "accelerate>=0.25.0",
     "thop>=0.1.1",
+    "huggingface_hub>=0.20.0",
+    "kaldifeat",
 ]
 ui = [
     "fastapi",
