@@ -369,6 +369,39 @@ def preview(artifact_id, id2, limit, sample):
         console.print(f"[bold red]Error previewing artifact:[/bold red] {e}")
 
 
+# =============================================================================
+# Subprocess helpers
+# =============================================================================
+
+def _run_cmd(cmd: list, cwd=None, check: bool = False):
+    """
+    Run a subprocess with consistent error handling.
+    
+    Args:
+        cmd: Command and arguments list
+        cwd: Working directory
+        check: If True, raise on non-zero exit code
+        
+    Returns:
+        CompletedProcess instance (always has .returncode, .stdout, .stderr)
+    """
+    import subprocess as _sp
+    import shutil
+    
+    # Verify the executable exists before running
+    exe = cmd[0]
+    if not shutil.which(exe):
+        # Return a fake CompletedProcess so callers can check .returncode
+        return _sp.CompletedProcess(cmd, returncode=127, stdout="", stderr=f"{exe}: command not found")
+    
+    result = _sp.run(cmd, cwd=cwd, capture_output=True, text=True)
+    
+    if check and result.returncode != 0:
+        raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}\n{result.stderr}")
+    
+    return result
+
+
 @main.group()
 def ocr():
     """OCR related commands (Installation, etc.)"""
@@ -460,6 +493,294 @@ def transcribe(input, output, format, timestamps, verbose, padding, device, no_n
         logger.exception("An error occurred during pipeline execution")
         console.print(f"[bold red]Error during processing:[/bold red] {e}")
         sys.exit(1)
+
+
+# =============================================================================
+# DVC Data Versioning Commands
+# =============================================================================
+
+@main.group()
+def data():
+    """Data versioning commands (DVC integration)"""
+    pass
+
+
+@data.command(name="init")
+@click.option("--remote", "-r", default="local", help="Remote storage type: local, minio, gdrive")
+@click.option("--remote-url", help="Remote storage URL (e.g., s3://bucket-name)")
+def data_init(remote, remote_url):
+    """Initialize DVC for data versioning in current project."""
+    console.print("[bold blue]🔧 Initializing DVC for Data Versioning...[/bold blue]")
+    
+    # Check if DVC is installed
+    result = _run_cmd(["dvc", "version"])
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found. Install with: uv tool install dvc --with dvc-s3 --with boto3")
+        return
+    if result.returncode != 0:
+        console.print(f"[bold red]Error:[/bold red] {result.stderr.strip()}")
+        return
+    console.print(f"[dim]DVC version: {result.stdout.strip().split()[0] if result.stdout else 'unknown'}[/dim]")
+    
+    # Initialize DVC
+    result = _run_cmd(["dvc", "init"])
+    if result.returncode == 0:
+        console.print("[green]✓[/green] DVC initialized successfully")
+    elif "already initialized" in result.stderr.lower():
+        console.print("[yellow]⚠[/yellow] DVC already initialized")
+    else:
+        console.print(f"[red]✗[/red] DVC init failed: {result.stderr}")
+        return
+    
+    # Setup remote
+    if remote == "local":
+        remote_url = remote_url or "/tmp/dvc-storage"
+        r = _run_cmd(["dvc", "remote", "add", "-d", "local", remote_url])
+        if r.returncode == 0:
+            console.print(f"[green]✓[/green] Local remote configured: {remote_url}")
+        else:
+            console.print(f"[yellow]⚠[/yellow] Remote config failed: {r.stderr.strip()}")
+    elif remote == "minio":
+        if not remote_url:
+            console.print("[yellow]⚠[/yellow] MinIO remote URL not provided. Configure manually:")
+            console.print("  dvc remote add -d minio s3://your-bucket")
+            console.print("  dvc remote modify minio endpointurl https://your-minio-url")
+            console.print("  dvc remote modify minio access_key_id YOUR_KEY")
+            console.print("  dvc remote modify minio secret_access_key YOUR_SECRET")
+        else:
+            r = _run_cmd(["dvc", "remote", "add", "-d", "minio", remote_url])
+            if r.returncode == 0:
+                console.print(f"[green]✓[/green] MinIO remote configured: {remote_url}")
+                console.print("[yellow]Note:[/yellow] Configure credentials with dvc remote modify")
+            else:
+                console.print(f"[yellow]⚠[/yellow] Remote config failed: {r.stderr.strip()}")
+    
+    # Create .dvcignore if not exists
+    dvcignore_path = Path(".dvcignore")
+    if not dvcignore_path.exists():
+        dvcignore_content = """# DVC Ignore Patterns
+.cache/
+__pycache__/
+*.pyc
+*.tmp
+.DS_Store
+.idea/
+.vscode/
+*.log
+.zen/
+.venv/
+venv/
+build/
+dist/
+"""
+        dvcignore_path.write_text(dvcignore_content)
+        console.print("[green]✓[/green] Created .dvcignore")
+    
+    console.print("\n[bold green]✅ DVC setup complete![/bold green]")
+    console.print("\nNext steps:")
+    console.print("  1. Track data: [cyan]zem data add data/[/cyan]")
+    console.print("  2. Push to remote: [cyan]zem data push[/cyan]")
+    console.print("  3. Pull data: [cyan]zem data pull[/cyan]")
+
+
+@data.command(name="add")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--message", "-m", help="Commit message for git")
+def data_add(path, message):
+    """Track a file or directory with DVC."""
+    console.print(f"[bold blue]📦 Tracking data: {path}[/bold blue]")
+    
+    # Add to DVC
+    result = _run_cmd(["dvc", "add", path])
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found. Install with: uv tool install dvc --with dvc-s3 --with boto3")
+        return
+    if result.returncode != 0:
+        console.print(f"[bold red]Error:[/bold red] {result.stderr}")
+        return
+    
+    console.print(f"[green]✓[/green] Added to DVC: {path}")
+    
+    # Show hash info
+    try:
+        from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
+        dvc_hash = DVCMetadataExtractor.get_dvc_hash(path)
+        if dvc_hash:
+            console.print(f"[dim]DVC Hash: {dvc_hash}[/dim]")
+    except ImportError:
+        console.print("[yellow]Warning:[/yellow] Could not load DVC metadata extractor.")
+    
+    # Git add the .dvc file (only if inside a git repo)
+    is_git = _run_cmd(["git", "rev-parse", "--is-inside-work-tree"]).returncode == 0
+    
+    if is_git:
+        dvc_file = f"{path}.dvc"
+        gitignore_file = f"{Path(path).parent}/.gitignore" if Path(path).parent != Path(".") else ".gitignore"
+        
+        _run_cmd(["git", "add", dvc_file])
+        if Path(gitignore_file).exists():
+            _run_cmd(["git", "add", gitignore_file])
+        
+        console.print(f"[green]✓[/green] Staged for git: {dvc_file}")
+        
+        if message:
+            result = _run_cmd(["git", "commit", "-m", message])
+            if result.returncode == 0:
+                console.print(f"[green]✓[/green] Committed: {message}")
+            else:
+                err_msg = result.stderr.strip() or result.stdout.strip()
+                console.print(f"[yellow]⚠[/yellow] Git commit: {err_msg}")
+    else:
+        console.print("[dim]Skipping git stage (not a git repository)[/dim]")
+
+
+@data.command(name="push")
+@click.option("--remote", "-r", help="Remote name to push to")
+def data_push(remote):
+    """Push tracked data to remote storage."""
+    console.print("[bold blue]⬆️  Pushing data to remote...[/bold blue]")
+    
+    cmd = ["dvc", "push"]
+    if remote:
+        cmd.extend(["-r", remote])
+    
+    result = _run_cmd(cmd)
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found.")
+        return
+    if result.returncode == 0:
+        console.print("[green]✓[/green] Data pushed successfully")
+        if result.stdout:
+            console.print(f"[dim]{result.stdout.strip()}[/dim]")
+    else:
+        console.print(f"[bold red]Error:[/bold red] {result.stderr}")
+
+
+@data.command(name="pull")
+@click.option("--remote", "-r", help="Remote name to pull from")
+def data_pull(remote):
+    """Pull tracked data from remote storage."""
+    console.print("[bold blue]⬇️  Pulling data from remote...[/bold blue]")
+    
+    cmd = ["dvc", "pull"]
+    if remote:
+        cmd.extend(["-r", remote])
+    
+    result = _run_cmd(cmd)
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found.")
+        return
+    if result.returncode == 0:
+        console.print("[green]✓[/green] Data pulled successfully")
+        if result.stdout:
+            console.print(f"[dim]{result.stdout.strip()}[/dim]")
+    else:
+        console.print(f"[bold red]Error:[/bold red] {result.stderr}")
+
+
+@data.command(name="status")
+def data_status():
+    """Show DVC data status and tracked files."""
+    console.print("[bold blue]📊 DVC Data Status[/bold blue]\n")
+    
+    # Show remotes
+    result = _run_cmd(["dvc", "remote", "list"])
+    if result.returncode == 127:
+        console.print("[bold red]Error:[/bold red] DVC not found.")
+        return
+    if result.returncode == 0 and result.stdout.strip():
+        console.print("[bold]Configured Remotes:[/bold]")
+        for line in result.stdout.strip().split("\n"):
+            console.print(f"  • {line}")
+    else:
+        console.print("[yellow]No remotes configured[/yellow]")
+    
+    console.print()
+    
+    # Show status
+    result = _run_cmd(["dvc", "status"])
+    if result.returncode == 0:
+        if result.stdout.strip():
+            console.print("[bold]Data Status:[/bold]")
+            console.print(result.stdout)
+        else:
+            console.print("[green]✓[/green] All data is up to date")
+    else:
+        console.print(f"[dim]{result.stderr.strip()}[/dim]")
+    
+    # Show tracked files
+    console.print("\n[bold]Tracked Data Files:[/bold]")
+    dvc_files = list(Path(".").rglob("*.dvc"))
+    if dvc_files:
+        try:
+            from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
+            
+            table = Table(show_header=True, header_style="bold cyan")
+            table.add_column("File")
+            table.add_column("Hash")
+            table.add_column("Size")
+            
+            for dvc_file in dvc_files:
+                if dvc_file.name == ".dvc":
+                    continue
+                data_path = str(dvc_file)[:-4]  # Remove .dvc extension
+                dvc_hash = DVCMetadataExtractor.get_dvc_hash(data_path) or "N/A"
+                stats = DVCMetadataExtractor.get_file_stats(data_path)
+                size = stats.get("size_human", "N/A")
+                
+                # Truncate hash for display
+                hash_display = dvc_hash[:12] + "..." if len(dvc_hash) > 15 else dvc_hash
+                table.add_row(data_path, hash_display, size)
+            
+            console.print(table)
+        except ImportError:
+            console.print("[yellow]Warning:[/yellow] Could not load DVC metadata extractor.")
+    else:
+        console.print("[dim]No data files tracked yet[/dim]")
+
+
+@data.command(name="lineage")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def data_lineage(path, as_json):
+    """Show data lineage and metadata for a tracked file."""
+    try:
+        from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
+        import json as json_lib
+        
+        lineage = DVCMetadataExtractor.create_lineage_metadata(path)
+        
+        if as_json:
+            console.print(json_lib.dumps(lineage, indent=2, default=str))
+        else:
+            console.print(f"[bold blue]📋 Data Lineage: {path}[/bold blue]\n")
+            
+            # DVC Info
+            console.print("[bold]DVC Information:[/bold]")
+            dvc_info = lineage.get("dvc", {})
+            console.print(f"  Hash: [cyan]{dvc_info.get('hash', 'N/A')}[/cyan]")
+            console.print(f"  Tracked: {'✓' if dvc_info.get('tracked') else '✗'}")
+            if dvc_info.get("remote"):
+                console.print(f"  Remotes: {dvc_info['remote']}")
+            
+            # Git Info
+            console.print("\n[bold]Git Information:[/bold]")
+            git_info = lineage.get("git", {})
+            console.print(f"  Commit: [cyan]{git_info.get('commit', 'N/A')[:12] if git_info.get('commit') else 'N/A'}[/cyan]")
+            console.print(f"  Branch: {git_info.get('branch', 'N/A')}")
+            
+            # Data Info
+            console.print("\n[bold]Data Information:[/bold]")
+            data_info = lineage.get("data", {})
+            console.print(f"  Type: {data_info.get('type', 'N/A')}")
+            console.print(f"  Size: {data_info.get('size_human', 'N/A')}")
+            if data_info.get("file_count"):
+                console.print(f"  Files: {data_info['file_count']}")
+            
+            console.print(f"\n[dim]Timestamp: {lineage.get('timestamp', 'N/A')}[/dim]")
+    except ImportError:
+        console.print("[bold red]Error:[/bold red] Could not load DVC metadata extractor utility.")
+
 
 
 if __name__ == "__main__":
