@@ -17,7 +17,8 @@ try:
     from .components.asr.transcriber import VieASRTranscriber
     from .components.diarization.diarizer import DiariZenDiarizer
     from .core.models import AudioSegment as CoreAudioSegment
-except ImportError:
+except ImportError as e:
+    logger.warning(f"Audio dependencies missing: {e}. Vui lòng chạy 'python scripts/setup_audio.py' để thiết lập môi trường.")
     VieASRTranscriber = None
     DiariZenDiarizer = None
     CoreAudioSegment = None
