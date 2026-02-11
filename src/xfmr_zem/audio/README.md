@@ -43,7 +43,7 @@ The ASR component (`VieASR`) requires `k2`, `kaldifeat`, and `icefall`. These ar
     pip install kaldifeat
     ```
 
-3.  **icefall**: Must be installed as an external dependency (via `pip install git+...` or local install). The wrapper logic in `transcriber.py` handles the integration.
+3.  **icefall**: Included as a submodule/wrapper within `components/asr/icefall`.
 
 **Note:** If these dependencies are missing, the pipeline will fallback to a "Simplified" backend which generates placeholder transcripts (useful for testing pipeline flow).
 

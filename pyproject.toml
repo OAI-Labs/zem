@@ -61,6 +61,10 @@ all = [
     "datasketch>=1.6.0",
     "underthesea>=6.8.0",
 ]
+audio = [
+    "lhotse>=1.24.0",
+    "sentencepiece>=0.1.99",
+]
 vn_asr = [
     "pyvi>=0.1.1",
     "transformers>=4.40.0",
@@ -83,7 +87,7 @@ ocr = [
     "ruamel.yaml>=0.17.0",
     "cachetools>=5.0.0",
 ]
-audio = [
+voice = [
     "pyannote-audio>=3.1.0",
     "librosa>=0.10.0",
     "soundfile>=0.12.0",
@@ -106,10 +110,6 @@ audio = [
     "torchinfo>=1.8.0",
     "accelerate>=0.25.0",
     "thop>=0.1.1",
-    "huggingface_hub>=0.20.0",
-    "kaldifeat",
-    "lhotse>=1.24.0",
-    "sentencepiece>=0.1.99",
 ]
 ui = [
     "fastapi",
