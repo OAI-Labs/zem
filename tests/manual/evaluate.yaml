@@ -4,11 +4,33 @@ correlator: xfmr-zem
 
 servers:
   evaluator: servers/evaluator
+  evaluator: servers/evaluator
+
 
 pipeline:
-  - name: "Evaluate LM"
+  - name: build_ds
+    evaluator.build_opik_dataset:
+      dataset_path: data/TextGen_dataset.json
+      dataset_name: textgen
+      dataset_type: text_generation
+      limit: 10
+      reset: False
+    cache: True
+
+  - name: eval_LM
     evaluator.evaluate:  
-      dataset_path: data/MCQ_dataset.json
+      data: $build_ds
+      dataset_name: textgen
+      metrics:
+        - "hallucination"
+        - "context_recall"
+        - "context_precision"
+        - "answer_relevance" 
+        - "g-eval"
+        - "context_precision"
+        - "answer_relevance" 
+        - "levenshtein_ratio"
+
     cache: False
 
     
