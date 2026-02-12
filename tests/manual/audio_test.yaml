@@ -1,62 +1,66 @@
-name: audio_comprehensive_pipeline
-description: "Pipeline kiểm tra toàn diện module Audio: Preprocess -> Diarize -> Transcribe"
+name: audio_atomic_pipeline
+description: "Pipeline kiểm tra Audio Server theo hướng nguyên tử hóa (Atomic Logic)"
 
 # Cấu hình server MCP
 servers:
   audio: src/xfmr_zem/servers/audio/server.py
 
-# Định nghĩa luồng xử lý
+# Định nghĩa luồng xử lý chi tiết
 pipeline:
-  # Bước 1: Tiền xử lý âm thanh (Chuẩn hóa format)
+  # 1. Tiền xử lý
   - name: step1_preprocess
     audio.preprocess:
       input:
         data:
           - audio_path: "tests/data/sample_audio.wav"
         audio_column: "audio_path"
-        output_column: "prepared_audio"
+        output_column: "clean_audio"
     cache: false
 
-  # Bước 2: Nhận diện người nói (Diarization)
+  # 2. Nhận diện người nói
   - name: step2_diarize
     audio.diarize:
       input:
         data: "$step1_preprocess"
-        audio_column: "prepared_audio"
-        speakers_column: "speaker_count"
+        audio_column: "clean_audio"
         rttm_column: "rttm_file"
-        output_dir: "./output/diarization"
+        output_dir: "./output/rttm"
     cache: false
 
-  # Bước 3: Nhận diện giọng nói (ASR)
-  - name: step3_transcribe
-    audio.transcribe:
+  # 3. Cắt nhỏ Audio (Slicing) - Bước mới tách ra
+  - name: step3_slice
+    audio.slice:
       input:
         data: "$step2_diarize"
-        audio_column: "prepared_audio"
-        text_column: "final_transcript"
-        model: "zzasdf/viet_iter3_pseudo_label"
-        batch_size: 1
+        audio_column: "clean_audio"
+        rttm_column: "rttm_file"
+        output_dir: "./output/chunks"
     cache: false
 
-  # Tùy chọn: Chạy Full Pipeline (Tất cả trong một)
-  - name: end_to_end_test
-    audio.full_pipeline:
+  # 4. Dịch từng đoạn (Transcription) 
+  # Lúc này input là danh sách các chunk từ bước 3
+  - name: step4_transcribe
+    audio.transcribe:
       input:
-        data:
-          - audio_path: "tests/data/sample_audio.wav"
-        audio_column: "audio_path"
-        output_column: "result_json_path"
+        data: "$step3_slice"
+        audio_column: "chunk_path"
+        text_column: "segment_text"
+        model: "zzasdf/viet_iter3_pseudo_label"
     cache: false
 
-# Tham số cấu hình chi tiết
+  # 5. Hợp nhất kết quả (Merging) - Bước mới tách ra
+  - name: step5_final_merge
+    audio.merge:
+      input:
+        data: "$step4_transcribe"
+        text_column: "segment_text"
+        group_by: "original_audio"
+    cache: false
+
+# Tham số cấu hình
 parameters:
   audio:
     asr:
       device: "cuda"
-      decoding_method: "modified_beam_search"
     diarization:
       device: "cuda"
-    preprocessing:
-      enable_noise_reduction: true
-      noise_reduction_strength: 0.5

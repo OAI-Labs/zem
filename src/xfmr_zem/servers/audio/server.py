@@ -194,29 +194,123 @@ def preprocess(
 
 
 @server.tool()
-def full_pipeline(
+def slice(
     data: Any,
     audio_column: str = "audio_path",
-    output_column: str = "transcript_path",
+    rttm_column: str = "rttm_path",
+    output_dir: str = "output/chunks"
 ) -> Any:
     """
-    Chạy toàn bộ quy trình: Preprocess -> Diarize -> Slice -> Transcribe -> Merge.
+    Cắt audio thành các đoạn nhỏ dựa trên kết quả diarization.
+    Trả về danh sách các segment kèm đường dẫn file chunk.
     """
-    from .pipeline import create_pipeline
-    
+    from .components.slicer import AudioSlicer
+    from .components.diarization.diarizer import DiariZenDiarizer
+    from .core.models import SlicerConfig
+    import os
+
     items = server.get_data(data)
-    pipeline = create_pipeline()
+    slicer = AudioSlicer(SlicerConfig())
+    diarizer = DiariZenDiarizer() # Dùng để parse RTTM nếu cần
+    
+    os.makedirs(output_dir, exist_ok=True)
+    all_segments = []
 
     for item in items:
-        path = Path(item.get(audio_column, ""))
-        if path.exists():
-            # Lưu kết quả ra file JSON/Text tùy cấu hình
-            output_path = path.parent / f"{path.stem}_result.json"
-            transcript = pipeline.process(path, output_path=output_path)
-            item[output_column] = str(output_path)
-            item["text_preview"] = transcript.to_text()[:200]
+        audio_path = Path(item.get(audio_column, ""))
+        rttm_path = Path(item.get(rttm_column, ""))
+        
+        if audio_path.exists() and rttm_path.exists():
+            # Parse RTTM thành các vùng cần cắt
+            with open(rttm_path, "r") as f:
+                rttm_content = f.read()
             
-    return server.save_output(items)
+            # Logic đơn giản hóa: Slicer nhận audio và danh sách regions
+            # Ở đây chúng ta giả định slicer có thể parse hoặc chúng ta parse ở đây
+            # Để đơn giản, tôi sẽ gọi pipeline nội bộ để xử lý phần này
+            try:
+                # Cắt và lưu thành file thực tế
+                from .core.models import DiarizationSegment
+                segments = []
+                for line in rttm_content.strip().split("\n"):
+                    parts = line.split()
+                    if len(parts) >= 8:
+                        segments.append(DiarizationSegment(
+                            start=float(parts[3]),
+                            end=float(parts[3]) + float(parts[4]),
+                            speaker_id=parts[7]
+                        ))
+                
+                sliced_chunks = slicer.slice(audio_path, segments)
+                
+                for i, chunk in enumerate(sliced_chunks):
+                    chunk_name = f"{audio_path.stem}_seg_{i:04d}_{chunk.speaker_id}.wav"
+                    chunk_path = os.path.join(output_dir, chunk_name)
+                    # Lưu file chunk
+                    import soundfile as sf
+                    sf.write(chunk_path, chunk.audio_data, chunk.sample_rate)
+                    
+                    all_segments.append({
+                        "original_audio": str(audio_path),
+                        "chunk_path": chunk_path,
+                        "speaker_id": chunk.speaker_id,
+                        "start": chunk.start_with_padding,
+                        "end": chunk.end_with_padding
+                    })
+            except Exception as e:
+                logger.error(f"Error slicing {audio_path}: {e}")
+
+    return server.save_output(all_segments)
+
+
+@server.tool()
+def merge(
+    data: Any,
+    text_column: str = "text",
+    group_by: str = "original_audio"
+) -> Any:
+    """
+    Hợp nhất các đoạn text đã dịch thành hội thoại hoàn chỉnh.
+    """
+    from .components.merging.merger import TranscriptMerger
+    from .core.models import TranscriptionResult, AudioSegment, DiarizationSegment
+    import numpy as np
+
+    items = server.get_data(data)
+    merger = TranscriptMerger()
+    
+    # Gom nhóm theo file gốc
+    groups = {}
+    for item in items:
+        original = item.get(group_by, "default")
+        if original not in groups:
+            groups[original] = []
+        groups[original].append(item)
+    
+    final_results = []
+    for original_file, segments in groups.items():
+        # Chuyển đổi dữ liệu input thành TranscriptionResult objects
+        results = []
+        for s in segments:
+            # Tạo dummy objects để merger hoạt động
+            dummy_dia = DiarizationSegment(start=s['start'], end=s['end'], speaker_id=s['speaker_id'])
+            dummy_audio = AudioSegment(
+                audio_data=np.array([]), 
+                sample_rate=16000, 
+                original_segment=dummy_dia,
+                start_with_padding=s['start'],
+                end_with_padding=s['end']
+            )
+            results.append(TranscriptionResult(text=s.get(text_column, ""), segment=dummy_audio))
+        
+        merged = merger.merge([], results) # DiarizationSegment list không dùng trong logic merge hiện tại
+        final_results.append({
+            "audio_path": original_file,
+            "transcript": merged.to_text(),
+            "turns_count": len(merged.turns)
+        })
+
+    return server.save_output(final_results)
 
 
 if __name__ == "__main__":
