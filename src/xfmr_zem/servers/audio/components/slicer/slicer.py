@@ -12,8 +12,7 @@ import numpy as np
 import librosa
 
 from ...core.interfaces import IAudioSlicer
-from ...core.models import DiarizationSegment, AudioSegment
-from ...config import SlicerConfig
+from ...core.models import DiarizationSegment, AudioSegment, SlicerConfig
 
 logger = logging.getLogger(__name__)
 

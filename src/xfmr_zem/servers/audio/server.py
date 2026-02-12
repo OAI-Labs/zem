@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from xfmr_zem.server import ZemServer
-from .config import ASRConfig, DiarizationConfig
+from .core.models import ASRConfig, DiarizationConfig
 
 # Setup logging
 logger = logging.getLogger(__name__)

@@ -14,7 +14,7 @@ import librosa
 import soundfile as sf
 
 from ...core.interfaces import IPreprocessor
-from ...config import PreprocessingConfig
+from ...core.models import PreprocessingConfig
 
 logger = logging.getLogger(__name__)
 

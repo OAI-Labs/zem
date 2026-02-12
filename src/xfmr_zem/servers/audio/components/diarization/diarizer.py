@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ...core.interfaces import IDiarizer
-from ...core.models import DiarizationSegment
-from ...config import DiarizationConfig
+from ...core.models import DiarizationSegment, DiarizationConfig
 
 logger = logging.getLogger(__name__)
 

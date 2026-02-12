@@ -1,8 +1,58 @@
+# =============================================================================
+# Zem Audio Module Configuration (parameters.yml)
+# Tự động hóa bộ tham số từ config.py để người dùng dễ dàng tùy chỉnh.
+# =============================================================================
+
+# Cấu hình chung cho Pipeline (Dùng cho lệnh CLI: zem audio transcribe)
+pipeline:
+  # Tiền xử lý âm thanh
+  preprocessing:
+    target_sample_rate: 16000
+    convert_to_mono: true
+    enable_noise_reduction: true
+    noise_reduction_strength: 0.5
+    enable_normalization: true
+    target_loudness_lufs: -23.0
+
+  # Nhận diện người nói (Diarization)
+  diarization:
+    model_name: "BUT-FIT/diarizen-wavlm-large-s80-md"
+    device: "cuda" # "cuda" hoặc "cpu"
+
+  # Cắt đoạn âm thanh
+  slicer:
+    collar_padding: 0.2 # Khoảng đệm (giây), cực kỳ quan trọng cho tiếng Việt
+    min_segment_duration: 0.5
+    max_segment_duration: 30.0
+
+  # Nhận diện giọng nói (ASR)
+  asr:
+    model_name: "zzasdf/viet_iter3_pseudo_label"
+    device: "cuda"
+    batch_size: 8
+    decoding_method: "modified_beam_search"
+    backend: "simplified" # "icefall" hoặc "simplified"
+    context_score: 2.0
+
+  # Định dạng đầu ra
+  output:
+    format: "text" # "text", "json", "srt", "all"
+    include_timestamps: true
+    output_dir: "./output"
+
+  # Quản lý tài nguyên
+  temp_dir: "./temp"
+  cleanup_temp: true
+  verbose: false
+
+# -----------------------------------------------------------------------------
+# Cấu hình riêng cho các Tool của ZemServer (Dùng cho Pipeline YAML)
+# -----------------------------------------------------------------------------
 transcribe:
   model: "program_vn_iter3"
   batch_size: 1
   hotwords: ""
 
 diarize:
-  num_speakers: 0 # 0 for auto
+  num_speakers: 0 # 0 để tự động nhận diện
   output_rttm: ""

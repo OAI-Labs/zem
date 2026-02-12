@@ -46,8 +46,7 @@ import numpy as np
 import soundfile as sf
 
 from ...core.interfaces import ITranscriber
-from ...core.models import AudioSegment, TranscriptionResult
-from ...config import ASRConfig
+from ...core.models import AudioSegment, TranscriptionResult, ASRConfig
 
 logger = logging.getLogger(__name__)
 

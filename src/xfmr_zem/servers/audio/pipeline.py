@@ -17,8 +17,7 @@ from .core.interfaces import (
     ITranscriber, 
     IMerger,
 )
-from .core.models import MergedTranscript
-from .config import PipelineConfig
+from .core.models import MergedTranscript, PipelineConfig
 
 logger = logging.getLogger(__name__)
 
