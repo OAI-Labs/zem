@@ -1,0 +1,14 @@
+# Test configuration for OCR Module
+name: evaluate pipeline
+correlator: xfmr-zem
+
+servers:
+  evaluator: servers/evaluator
+
+pipeline:
+  - name: "Evaluate LM"
+    evaluator.evaluate:  
+      dataset_path: data/MCQ_dataset.json
+    cache: False
+
+    
