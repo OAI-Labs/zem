@@ -1,0 +1,11 @@
+evaluate:
+    dataset_path: "evaluator/MCQ_dataset.json"
+    dataset_name: "mmlu"
+    task_type: "multiple_choice"
+    test_model_engine: "huggingface"
+    test_model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+    evaluate_model_engine: "gemini"
+    evaluate_model_id: "gemini-2.5-flash"
+    limit: 3
+    project_name: "Evaluate LM"
+    experiment_name: "Run Evaluation"
