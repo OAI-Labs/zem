@@ -4,3 +4,7 @@ parse_document:
 
 extract_tables:
   strategy: "hi_res"
+
+extract_pdf_pages:
+  field: file_path
+  zoom: 2.0

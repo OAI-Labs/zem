@@ -1,0 +1,25 @@
+# DVC Configuration for Zem Project
+# ==================================
+# Remote storage configuration for data versioning
+
+[core]
+    remote = minio
+    autostage = true
+
+[cache]
+    type = reflink,hardlink,symlink,copy
+
+# MinIO Remote (S3-compatible)
+# Configure with: dvc remote modify minio endpointurl <YOUR_MINIO_URL>
+#                 dvc remote modify minio access_key_id <YOUR_KEY>
+#                 dvc remote modify minio secret_access_key <YOUR_SECRET>
+['remote "minio"']
+    url = s3://zem-data
+
+# Local Remote (for development/testing)
+['remote "local"']
+    url = /tmp/dvc-storage
+
+# Google Drive Remote (optional)
+# ['remote "gdrive"']
+#     url = gdrive://<FOLDER_ID>

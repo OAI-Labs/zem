@@ -1,0 +1,36 @@
+# DVC Ignore Patterns for Zem
+# ===========================
+
+# Cache directories
+.cache/
+__pycache__/
+*.pyc
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# Log files
+*.log
+logs/
+
+# ZenML artifacts (tracked separately)
+.zen/
+
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Test outputs
+tests/outputs/
