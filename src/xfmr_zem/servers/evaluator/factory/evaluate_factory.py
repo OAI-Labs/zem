@@ -1,179 +1,83 @@
 import os
-import json
-import requests
-from typing import List, Dict, Any, Optional, Union
-from opik.evaluation.models import OpikBaseModel
+import logging
+from typing import Optional, Dict, Any
 
-import os
-import json
-import requests
-from typing import List, Dict, Any, Optional, Type
-from pydantic import BaseModel
-from opik.evaluation.models import OpikBaseModel
+logger = logging.getLogger(__name__)
 
-class OpikGeminiModel(OpikBaseModel):
-    """
-    Opik model wrapper for Google Gemini API.
-    """
+class OpikModelProvider:
+    """Simple provider for Opik model evaluation with auto API key loading"""
     
-    def __init__(
-        self,
-        model_name: str = "gemini-2.5-flash",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        top_p: Optional[float] = None,
-        top_k: Optional[int] = None,
-        **kwargs
-    ):
-        super().__init__(model_name=model_name)
-        
-        # Load API key
-        self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if not self.api_key:
-            raise ValueError(
-                "Gemini API key not found. Please set GOOGLE_API_KEY or GEMINI_API_KEY environment variable."
-            )
-        
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
-        
-        # Default config
-        self.default_config = {
-            "temperature": temperature,
-            "maxOutputTokens": max_tokens,
-            "topP": top_p,
-            "topK": top_k
-        }
-        # Remove None values
-        self.default_config = {k: v for k, v in self.default_config.items() if v is not None}
-
-    def generate_string(
+    # API key environment variables
+    API_KEYS = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY", 
+        "google": "GOOGLE_API_KEY",
+        "azure": "AZURE_OPENAI_API_KEY",
+        "ollama": "OLLAMA_API_KEY",
+    }
+    
+    def __init__(self):
+        self._cache = {}
+    
+    def get_model(
         self, 
-        input: str, 
-        response_format: Optional[Type[BaseModel]] = None, 
-        **kwargs: Any
+        provider: str, 
+        model_id: str,
+        api_key: Optional[str] = None,
+        **kwargs
     ) -> str:
         """
-        Simplified interface to generate a string output from the model.
-        Matches OpikBaseModel signature strictly.
-        """
-        # Construct a simple user message
-        messages = [{"role": "user", "content": input}]
+        Get model for Opik evaluation
         
-        # Call the provider response
-        response = self.generate_provider_response(
-            messages=messages, 
-            response_format=response_format, 
-            **kwargs
-        )
-        
-        # Extract text from Gemini response structure
-        try:
-            if (
-                response.get("candidates") 
-                and len(response["candidates"]) > 0
-                and response["candidates"][0].get("content")
-                and response["candidates"][0]["content"].get("parts")
-            ):
-                return response["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
-            pass
+        Args:
+            provider: Provider name (openai, anthropic, google, etc.)
+            model_id: Model ID (gpt-4o, claude-3-5-sonnet-latest, etc.)
+            api_key: Optional API key (loads from env if not provided)
             
-        raise ValueError(f"Unexpected response format from Gemini API: {response}")
-
-    def generate_provider_response(
-        self, 
-        messages: List[Dict[str, Any]], 
-        **kwargs: Any
-    ) -> Any:
+        Returns:
+            Model string for Opik metrics
         """
-        Generate a provider-specific response.
-        Matches OpikBaseModel signature strictly.
-        """
-        # 1. Separate System Prompt (if any) from Contents
-        gemini_contents = []
-        system_instruction = None
-
-        for message in messages:
-            role = message["role"]
-            content = message["content"]
-            
-            # Handle list of dicts (multimodal) or string
-            text_content = ""
-            if isinstance(content, str):
-                text_content = content
-            elif isinstance(content, list):
-                # Simple extraction for text-only parts logic
-                # You might need more complex logic here for images
-                text_content = " ".join([item.get("text", "") for item in content if "text" in item])
-            else:
-                text_content = str(content)
-
-            if role == "system":
-                # Gemini handles system prompt via systemInstruction field
-                system_instruction = {"parts": [{"text": text_content}]}
-            else:
-                # Map 'assistant' to 'model' for Gemini
-                gemini_role = "model" if role == "assistant" else "user"
-                gemini_contents.append({
-                    "role": gemini_role,
-                    "parts": [{"text": text_content}]
-                })
-
-        # 2. Prepare Request Body
-        request_body = {
-            "contents": gemini_contents
-        }
-        if system_instruction:
-            request_body["system_instruction"] = system_instruction
-
-        # 3. Handle Configuration (Merge defaults with kwargs)
-        # kwargs in generate call override init defaults
-        generation_config = self.default_config.copy()
+        provider = provider.lower()
         
-        # Map kwargs to Gemini API fields if they exist
-        if "temperature" in kwargs: generation_config["temperature"] = kwargs["temperature"]
-        if "max_tokens" in kwargs: generation_config["maxOutputTokens"] = kwargs["max_tokens"]
-        if "top_p" in kwargs: generation_config["topP"] = kwargs["top_p"]
-        if "top_k" in kwargs: generation_config["topK"] = kwargs["top_k"]
-
-        # Handle response_format (Basic JSON mode support)
-        # Note: Full schema validation requires more complex conversion from Pydantic to JSON Schema
-        response_format = kwargs.get("response_format")
-        if response_format:
-             generation_config["responseMimeType"] = "application/json"
-
-        if generation_config:
-            request_body["generationConfig"] = generation_config
-
-        # 4. Make API Request
-        url = f"{self.base_url}/models/{self.model_name}:generateContent"
-        headers = {"Content-Type": "application/json"}
-        params = {"key": self.api_key}
-        
-        try:
-            response = requests.post(
-                url,
-                headers=headers,
-                params=params,
-                json=request_body,
-                timeout=60
-            )
-            response.raise_for_status()
-            return response.json()
+        # Load API key from environment if not provided
+        if not api_key and provider in self.API_KEYS:
+            api_key = os.getenv(self.API_KEYS[provider])
             
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Gemini API Request Error: {str(e)}"
-            if hasattr(e, 'response') and e.response is not None:
-                error_msg += f"\nResponse: {e.response.text}"
-            raise RuntimeError(error_msg)
+        # Validate API key for providers that need it
+        if provider in ["openai", "anthropic", "google", "azure"] and not api_key:
+            raise ValueError(f"API key required for {provider}. Set {self.API_KEYS[provider]} environment variable.")
+        
+        # Cache the configuration
+        cache_key = f"{provider}_{model_id}"
+        if cache_key not in self._cache:
+            self._cache[cache_key] = {
+                "provider": provider,
+                "model_id": model_id,
+                "api_key": api_key,
+                **kwargs
+            }
+            logger.info(f"Configured model: {provider}/{model_id}")
+        
+        # Return model ID for Opik (Opik auto-detects provider)
+        return model_id
+    
+    def get_config(self, provider: str, model_id: str) -> Dict[str, Any]:
+        """Get full model configuration"""
+        cache_key = f"{provider.lower()}_{model_id}"
+        return self._cache.get(cache_key, {})
+    
+    def list_providers(self) -> list[str]:
+        """List supported providers"""
+        return list(self.API_KEYS.keys())
 
-    # Optional: Implement async methods if you want full compliance, 
-    # but OpikBaseModel abstract methods are the critical ones.
-
-class EvaluateModelFactory:
-    @staticmethod
-    def get_model(engine: str, model_name: str, **kwargs) -> OpikBaseModel:
-        if engine.lower() == "gemini":
-            return OpikGeminiModel(model_name=model_name, **kwargs)
-        else:
-            raise ValueError(f"Unknown evaluation model engine: {engine}")
+# Usage
+if __name__ == "__main__":
+    provider = OpikModelProvider()
+    
+    # Simple usage
+    model = provider.get_model("gemini", "gemini-2.5-flash")
+    print(f"Model: {model}")
+    
+    # Use with Opik metrics
+    from opik.evaluation.metrics import Hallucination
+    metric = Hallucination(model=model)
