@@ -91,12 +91,20 @@ def transcribe(
             
             duration = len(audio_data) / sr
             
-            # TODO: Handle original_segment properly if needed?
+            # Create a dummy diarization segment for the whole file
+            from .core.models import DiarizationSegment
+            dummy_seg = DiarizationSegment(
+                start=0.0,
+                end=duration,
+                speaker_id="speaker_0"
+            )
+            
             segment = CoreAudioSegment(
                 audio_data=audio_data,
                 sample_rate=sr,
-                duration=duration,
-                original_segment=None 
+                original_segment=dummy_seg,
+                start_with_padding=0.0,
+                end_with_padding=duration
             )
             segments_map.append((idx, segment))
         except Exception as e:
@@ -144,44 +152,73 @@ def diarize(
     if not items:
         return []
 
-    logger.info(f"Audio: Diarizing {len(items)} items")
-
     config = DiarizationConfig(
         rttm_output_dir=Path(output_dir) if output_dir else None
     )
-    # If output_dir is not set, Diarizer might not save RTTM unless we manually call save_rttm
-    
     diarizer = DiariZenDiarizer(config)
 
     for item in items:
-        audio_path_str = item.get(audio_column)
-        if not audio_path_str:
-            continue
-            
-        path = Path(audio_path_str)
-        if not path.exists():
-            continue
-            
-        try:
-            segments = diarizer.diarize(path)
-            
-            count = len(set(s.speaker_id for s in segments))
-            item[speakers_column] = count
-            
-            # Format simple text output or save RTTM
-            # If output_dir is provided, save there.
-            if output_dir:
-                rttm_path = Path(output_dir) / f"{path.stem}.rttm"
-                diarizer.save_rttm(segments, rttm_path, audio_name=path.stem)
-                item[rttm_column] = str(rttm_path)
-            else:
-                # Store simplified string representation if no file output requested?
-                # Or just don't store RTTM path.
-                item[rttm_column] = "No output_dir specified"
+        path = Path(item.get(audio_column, ""))
+        if path.exists():
+            try:
+                segments = diarizer.diarize(path)
+                item[speakers_column] = len(set(s.speaker_id for s in segments))
+                if output_dir:
+                    rttm_path = Path(output_dir) / f"{path.stem}.rttm"
+                    diarizer.save_rttm(segments, rttm_path, audio_name=path.stem)
+                    item[rttm_column] = str(rttm_path)
+            except Exception as e:
+                logger.error(f"Error diarizing {path}: {e}")
 
-        except Exception as e:
-            logger.error(f"Error diarizing {path}: {e}")
+    return server.save_output(items)
 
+
+@server.tool()
+def preprocess(
+    data: Any,
+    audio_column: str = "audio_path",
+    output_column: str = "preprocessed_path",
+) -> Any:
+    """
+    Tiền xử lý âm thanh (chuẩn hóa 16kHz, mono, khử nhiễu).
+    """
+    from .components.preprocessing import AudioPreprocessor
+    from .core.models import PreprocessingConfig
+
+    items = server.get_data(data)
+    preprocessor = AudioPreprocessor(PreprocessingConfig())
+
+    for item in items:
+        path = Path(item.get(audio_column, ""))
+        if path.exists():
+            item[output_column] = str(preprocessor.preprocess(path))
+    
+    return server.save_output(items)
+
+
+@server.tool()
+def full_pipeline(
+    data: Any,
+    audio_column: str = "audio_path",
+    output_column: str = "transcript_path",
+) -> Any:
+    """
+    Chạy toàn bộ quy trình: Preprocess -> Diarize -> Slice -> Transcribe -> Merge.
+    """
+    from .pipeline import create_pipeline
+    
+    items = server.get_data(data)
+    pipeline = create_pipeline()
+
+    for item in items:
+        path = Path(item.get(audio_column, ""))
+        if path.exists():
+            # Lưu kết quả ra file JSON/Text tùy cấu hình
+            output_path = path.parent / f"{path.stem}_result.json"
+            transcript = pipeline.process(path, output_path=output_path)
+            item[output_column] = str(output_path)
+            item["text_preview"] = transcript.to_text()[:200]
+            
     return server.save_output(items)
 
 

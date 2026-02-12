@@ -1,37 +1,62 @@
-name: audio_pipeline_test
-version: 1.0.0
-description: "Test pipeline for the Audio MCP server (Transcribe + Diarize)"
+name: audio_comprehensive_pipeline
+description: "Pipeline kiểm tra toàn diện module Audio: Preprocess -> Diarize -> Transcribe"
 
-# Define where our data comes from
-# In a real scenario, this could be a CSV/Parquet with 'audio_path' column
-# Here we define a simple inline data source or we can mock it
-# Note: ZenML/Zem logic would usually handle `source` loading.
-# If we run this via `zem run`, it expects steps.
+# Cấu hình server MCP
+servers:
+  audio: src/xfmr_zem/servers/audio/server.py
 
-steps:
-  - name: load_data
-    tool: zem.loader
-    args:
-      # We will provide a dummy file or list for testing
-      data: 
-        - audio_path: "./tests/data/sample_audio.wav"
-          id: "test_01"
+# Định nghĩa luồng xử lý
+pipeline:
+  # Bước 1: Tiền xử lý âm thanh (Chuẩn hóa format)
+  - name: step1_preprocess
+    audio.preprocess:
+      input:
+        data:
+          - audio_path: "tests/data/sample_audio.wav"
+        audio_column: "audio_path"
+        output_column: "prepared_audio"
+    cache: false
 
-  - name: transcribe_audio
-    tool: audio.transcribe
-    args:
-      audio_column: "audio_path"
-      text_column: "transcript"
-      model: "program_vn_iter3"
+  # Bước 2: Nhận diện người nói (Diarization)
+  - name: step2_diarize
+    audio.diarize:
+      input:
+        data: "$step1_preprocess"
+        audio_column: "prepared_audio"
+        speakers_column: "speaker_count"
+        rttm_column: "rttm_file"
+        output_dir: "./output/diarization"
+    cache: false
 
-  - name: diarize_audio
-    tool: audio.diarize
-    args:
-      audio_column: "audio_path"
-      output_dir: "./tests/output/rttm"
-      speakers_column: "speaker_count"
+  # Bước 3: Nhận diện giọng nói (ASR)
+  - name: step3_transcribe
+    audio.transcribe:
+      input:
+        data: "$step2_diarize"
+        audio_column: "prepared_audio"
+        text_column: "final_transcript"
+        model: "zzasdf/viet_iter3_pseudo_label"
+        batch_size: 1
+    cache: false
 
-  - name: inspect_results
-    tool: zem.sink.console
-    args:
-      limit: 5
+  # Tùy chọn: Chạy Full Pipeline (Tất cả trong một)
+  - name: end_to_end_test
+    audio.full_pipeline:
+      input:
+        data:
+          - audio_path: "tests/data/sample_audio.wav"
+        audio_column: "audio_path"
+        output_column: "result_json_path"
+    cache: false
+
+# Tham số cấu hình chi tiết
+parameters:
+  audio:
+    asr:
+      device: "cuda"
+      decoding_method: "modified_beam_search"
+    diarization:
+      device: "cuda"
+    preprocessing:
+      enable_noise_reduction: true
+      noise_reduction_strength: 0.5
