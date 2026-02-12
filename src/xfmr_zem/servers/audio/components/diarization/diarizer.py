@@ -4,14 +4,12 @@ Speaker diarization module using DiariZen.
 Wraps DiariZen pipeline for speaker identification and segmentation.
 """
 
-import logging
+from loguru import logger
 from pathlib import Path
 from typing import List, Optional
 
 from ...core.interfaces import IDiarizer
 from ...core.models import DiarizationSegment, DiarizationConfig
-
-logger = logging.getLogger(__name__)
 
 
 class DiariZenDiarizer(IDiarizer):

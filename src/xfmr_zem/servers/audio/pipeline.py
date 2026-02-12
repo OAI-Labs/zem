@@ -4,7 +4,7 @@ Main pipeline orchestrator for Audio Transcribe & Diarization.
 Follows Dependency Inversion Principle - depends on abstractions.
 """
 
-import logging
+from loguru import logger
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -18,8 +18,6 @@ from .core.interfaces import (
     IMerger,
 )
 from .core.models import MergedTranscript, PipelineConfig
-
-logger = logging.getLogger(__name__)
 
 
 class TranscriptionPipeline:

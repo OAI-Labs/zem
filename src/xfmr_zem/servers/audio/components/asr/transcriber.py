@@ -4,12 +4,7 @@ Vietnamese ASR module using VieASR (Zipformer).
 Transcribes audio segments to Vietnamese text.
 """
 
-import logging
-import sys
-from pathlib import Path
-from typing import List, Optional
-
-import logging
+from loguru import logger
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -48,7 +43,6 @@ import soundfile as sf
 from ...core.interfaces import ITranscriber
 from ...core.models import AudioSegment, TranscriptionResult, ASRConfig
 
-logger = logging.getLogger(__name__)
 
 
 class VieASRTranscriber(ITranscriber):

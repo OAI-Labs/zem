@@ -4,7 +4,7 @@ Transcript merging module.
 Combines transcriptions with speaker labels in chronological order.
 """
 
-import logging
+from loguru import logger
 from typing import List, Dict
 
 from ...core.interfaces import IMerger
@@ -14,8 +14,6 @@ from ...core.models import (
     MergedTranscript,
     SpeakerTurn,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class TranscriptMerger(IMerger):

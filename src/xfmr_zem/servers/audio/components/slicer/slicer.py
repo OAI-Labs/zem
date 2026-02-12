@@ -4,7 +4,7 @@ Audio slicing module with padding collar technique.
 Cuts audio into segments based on diarization results.
 """
 
-import logging
+from loguru import logger
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -13,8 +13,6 @@ import librosa
 
 from ...core.interfaces import IAudioSlicer
 from ...core.models import DiarizationSegment, AudioSegment, SlicerConfig
-
-logger = logging.getLogger(__name__)
 
 
 class AudioSlicer(IAudioSlicer):

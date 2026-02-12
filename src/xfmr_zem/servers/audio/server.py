@@ -1,13 +1,10 @@
 import os
 import sys
-import logging
+from loguru import logger
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from xfmr_zem.server import ZemServer
 from .core.models import ASRConfig, DiarizationConfig
-
-# Setup logging
-logger = logging.getLogger(__name__)
 
 # Initialize ZemServer
 server = ZemServer("audio", parameter_file=os.path.join(os.path.dirname(__file__), "parameters.yml"))

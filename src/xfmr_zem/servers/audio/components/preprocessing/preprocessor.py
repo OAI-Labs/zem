@@ -4,7 +4,7 @@ Audio preprocessing module.
 Converts audio to optimal format for DiariZen diarization.
 """
 
-import logging
+from loguru import logger
 from pathlib import Path
 from typing import Optional, Tuple
 import tempfile
@@ -15,8 +15,6 @@ import soundfile as sf
 
 from ...core.interfaces import IPreprocessor
 from ...core.models import PreprocessingConfig
-
-logger = logging.getLogger(__name__)
 
 
 class AudioPreprocessor(IPreprocessor):
