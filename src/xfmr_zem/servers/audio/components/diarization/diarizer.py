@@ -35,15 +35,40 @@ class DiariZenDiarizer(IDiarizer):
         self._device = None
     
     def _load_pipeline(self):
-        """Lazy load DiariZen pipeline."""
+        """Lazy load DiariZen pipeline với kỹ thuật Lazy Injection để tránh xung đột hệ thống."""
         if self._pipeline is not None:
             return
         
+        # --- Lazy Injection Logic ---
+        import sys
+        import os
+        from pathlib import Path
+
+        # Đường dẫn tới thư viện diarizen (nếu được đặt cục bộ)
+        current_dir = Path(__file__).parent
+        diarizen_lib = current_dir / "diarizen_lib"
+        
+        if diarizen_lib.exists() and str(diarizen_lib) not in sys.path:
+            logger.info(f"Injecting local diarizen_lib: {diarizen_lib}")
+            start_index = 1 if sys.path and sys.path[0] == "" else 0
+            sys.path.insert(start_index, str(diarizen_lib))
+            
+            # Giải quyết xung đột pyannote nếu nó đã được nạp trước đó (ví dụ bởi ZenML)
+            if "pyannote" in sys.modules:
+                logger.debug("Reloading pyannote namespace to include local library")
+                to_unload = [m for m in sys.modules if m.startswith("pyannote")]
+                for m in to_unload:
+                    del sys.modules[m]
+
         logger.info(f"Loading DiariZen model: {self.config.model_name}")
         
         try:
             # Import DiariZen pipeline
-            from .diarizen.pipelines.inference import DiariZenPipeline
+            # Thử import từ package cài đặt trước, nếu không được thì thử tương đối
+            try:
+                from diarizen.pipelines.inference import DiariZenPipeline
+            except ImportError:
+                from .diarizen.pipelines.inference import DiariZenPipeline
             
             # Load pre-trained model from HuggingFace
             pipeline_kwargs = {}
