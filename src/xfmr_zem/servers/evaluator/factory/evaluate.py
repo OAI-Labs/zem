@@ -43,24 +43,3 @@ class EvaluateModelFactory:
         # 3. Lỗi nếu không tìm thấy engine
         else:
             raise ValueError(f"Engine không hợp lệ: {engine}")
-
-# ==========================================
-# Cách sử dụng
-# ==========================================
-if __name__ == "__main__":
-    # Case 1: Cloud - OpenAI
-    gpt = EvaluateModelFactory.create(
-        engine="cloud",
-        provider="openai",
-        model_id="gpt-4",
-        api_key="sk-..." 
-    )
-    
-    # Case 2: Cloud - Azure (truyền thêm tham số qua kwargs)
-    azure = EvaluateModelFactory.create(
-        engine="cloud",
-        provider="azure",
-        model_id="gpt-35",
-        base_url="https://...",
-        api_version="2023-05-15"
-    )
