@@ -79,7 +79,7 @@ class dependencyInstaller:
         
         logger.warning("Không tìm thấy PyTorch. Đang cài đặt phiên bản mặc định...")
         # Mặc định cài torch 2.4.x cho ổn định
-        return self.run_command("pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu")
+        return self.run_command("uv pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu")
 
     def install_k2_kaldifeat(self, use_cuda: bool = False):
         """Cài đặt k2 và kaldifeat phù hợp với phiên bản torch và OS."""
@@ -89,11 +89,11 @@ class dependencyInstaller:
         
         # k2 installation
         k2_idx = K2_INDICES[mode]
-        k2_cmd = f"pip install k2 -f {k2_idx}"
+        k2_cmd = f"uv pip install k2 --find-links {k2_idx}"
         
         # kaldifeat installation
         kf_idx = KALDIFEAT_INDICES[mode]
-        kf_cmd = f"pip install kaldifeat -f {kf_idx}"
+        kf_cmd = f"uv pip install kaldifeat --find-links {kf_idx}"
         
         success = self.run_command(k2_cmd) and self.run_command(kf_cmd)
         
@@ -112,7 +112,7 @@ class dependencyInstaller:
             logger.info("icefall đã được cài đặt.")
         except ImportError:
             logger.info("Đang cài đặt icefall từ github...")
-            self.run_command("pip install git+https://github.com/k2-fsa/icefall.git --no-deps")
+            self.run_command("uv pip install git+https://github.com/k2-fsa/icefall.git --no-deps")
 
 class ModelManager:
     """Quản lý việc tải và lưu trữ models ngoài project (tránh phình to project)."""
