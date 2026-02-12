@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-class OpikModelProvider:
+class OpikCloudModel:
     """Simple provider for Opik model evaluation with auto API key loading"""
     
     # API key environment variables
@@ -70,9 +70,27 @@ class OpikModelProvider:
         """List supported providers"""
         return list(self.API_KEYS.keys())
 
+class EvaluateModelFactory:
+    @staticmethod
+    def get_model(engine: str, provider: str, model_id: str) -> str:
+        engine = engine.lower()
+        
+        # 1. Cloud Engine
+        if engine == "cloud":  
+            if provider in OpikCloudModel().list_providers():
+                provider = cloud_aliases.get(engine, engine)
+                try:
+                    return OpikCloudModel().get_model(provider, model_id)
+                except Exception as e:
+                    raise ErrorValue(f"Cannot load {model_id} from provider {provider}")
+            else:
+                raise ErrorValue(f"Unsupported provider {provider}")
+        # 3. Future Engines
+        raise ValueError(f"Unsupported evaluation engine: {engine}")
+
 # Usage
 if __name__ == "__main__":
-    provider = OpikModelProvider()
+    provider = OpikCloudModel()
     
     # Simple usage
     model = provider.get_model("gemini", "gemini-2.5-flash")
