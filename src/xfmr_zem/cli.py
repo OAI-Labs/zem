@@ -65,17 +65,28 @@ def list_tools(config):
 
 @main.command()
 @click.argument("project_name")
-def init(project_name: str):
-    """Bootstrap a new Zem project structure."""
+@click.option("--no-dvc", is_flag=True, help="Skip DVC initialization")
+@click.option("--no-git", is_flag=True, help="Skip Git initialization")
+@click.option("--dvc-remote", default="local", help="DVC remote type: local, minio, gdrive")
+@click.option("--minio-endpoint", envvar="DVC_MINIO_ENDPOINT", default=None, help="MinIO endpoint URL [env: DVC_MINIO_ENDPOINT]")
+@click.option("--minio-bucket", envvar="DVC_MINIO_BUCKET", default=None, help="MinIO bucket [env: DVC_MINIO_BUCKET]")
+@click.option("--minio-access-key", envvar="DVC_MINIO_ACCESS_KEY", default=None, help="MinIO access key [env: DVC_MINIO_ACCESS_KEY]")
+@click.option("--minio-secret-key", envvar="DVC_MINIO_SECRET_KEY", default=None, help="MinIO secret key [env: DVC_MINIO_SECRET_KEY]")
+def init(project_name: str, no_dvc: bool, no_git: bool, dvc_remote: str,
+         minio_endpoint: str, minio_bucket: str, minio_access_key: str, minio_secret_key: str):
+    """Bootstrap a new Zem project structure with Git and DVC."""
     base_path = Path(project_name)
     if base_path.exists():
         console.print(f"[bold red]Error:[/bold red] Path '{project_name}' already exists.")
         sys.exit(1)
 
+    console.print(f"[bold blue]🚀 Initializing Zem project: {project_name}[/bold blue]\n")
+
     # Create directories
     (base_path / "servers").mkdir(parents=True)
     (base_path / "tests/manual").mkdir(parents=True)
     (base_path / "data").mkdir(parents=True)
+    console.print("[green]✓[/green] Created project directories")
 
     # Create sample server
     sample_server_py = """from xfmr_zem.server import ZemServer
@@ -98,6 +109,7 @@ if __name__ == "__main__":
     mcp.run()
 """
     (base_path / "servers" / "sample_server.py").write_text(sample_server_py)
+    console.print("[green]✓[/green] Created sample server")
 
     # Create sample pipeline
     pipeline_yaml = f"""name: {project_name}_pipeline
@@ -112,10 +124,183 @@ pipeline:
         data: [{{"text": "Zem is awesome!"}}]
 """
     (base_path / "pipeline.yaml").write_text(pipeline_yaml)
+    console.print("[green]✓[/green] Created pipeline.yaml")
 
-    console.print(f"[bold green]Success![/bold green] Project '{project_name}' initialized.")
-    console.print(f"Created standalone sample server: [cyan]{project_name}/servers/sample_server.py[/cyan]")
-    console.print(f"Next steps:\n  cd {project_name}\n  zem list-tools -c pipeline.yaml\n  zem run pipeline.yaml")
+    # Create .gitignore
+    gitignore_content = """# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs & Cache
+*.log
+.cache/
+
+# OS
+.DS_Store
+
+# Zem/ZenML
+.zen/
+outputs/
+
+# DVC (data files tracked by DVC)
+/data/*
+!/data/.gitkeep
+!/data/*.dvc
+
+# DVC local config (contains credentials)
+.dvc/config.local
+.dvc/tmp/
+.dvc/cache/
+"""
+    (base_path / ".gitignore").write_text(gitignore_content)
+    console.print("[green]✓[/green] Created .gitignore")
+
+    # Create data/.gitkeep
+    (base_path / "data" / ".gitkeep").write_text("")
+
+    # Initialize Git
+    if not no_git:
+        console.print("\n[bold]Initializing Git...[/bold]")
+        result = _run_cmd(["git", "init"], cwd=base_path)
+        if result.returncode == 127:
+            console.print("[yellow]⚠[/yellow] Git not found. Skipping Git initialization.")
+        elif result.returncode == 0:
+            console.print("[green]✓[/green] Git initialized")
+            
+            # Initial commit
+            _run_cmd(["git", "add", "."], cwd=base_path)
+            commit_result = _run_cmd(
+                ["git", "commit", "-m", "Initial commit: Zem project setup"],
+                cwd=base_path,
+            )
+            if commit_result.returncode == 0:
+                console.print("[green]✓[/green] Created initial commit")
+            else:
+                console.print(f"[yellow]⚠[/yellow] Initial commit failed: {commit_result.stderr.strip()}")
+        else:
+            console.print(f"[yellow]⚠[/yellow] Git init failed: {result.stderr.strip()}")
+
+    # Initialize DVC
+    if not no_dvc:
+        console.print("\n[bold]Initializing DVC for data versioning...[/bold]")
+        
+        # Check if DVC is installed
+        dvc_check = _run_cmd(["dvc", "version"])
+        if dvc_check.returncode == 127:
+            console.print("[yellow]⚠[/yellow] DVC not found. Install with: [cyan]uv tool install dvc --with dvc-s3 --with boto3[/cyan]")
+            console.print("[dim]Skipping DVC initialization...[/dim]")
+        else:
+            # Initialize DVC
+            result = _run_cmd(["dvc", "init"], cwd=base_path)
+            if result.returncode == 0:
+                console.print("[green]✓[/green] DVC initialized")
+                
+                # Create .dvcignore
+                dvcignore_content = """# DVC Ignore
+__pycache__/
+*.pyc
+.cache/
+*.log
+.zen/
+.venv/
+"""
+                (base_path / ".dvcignore").write_text(dvcignore_content)
+                console.print("[green]✓[/green] Created .dvcignore")
+                
+                # Setup remote based on option
+                if dvc_remote == "local":
+                    local_storage = base_path / ".dvc-storage"
+                    local_storage.mkdir(exist_ok=True)
+                    r = _run_cmd(
+                        ["dvc", "remote", "add", "-d", "local", str(local_storage.absolute())],
+                        cwd=base_path,
+                    )
+                    if r.returncode == 0:
+                        console.print(f"[green]✓[/green] DVC local remote configured: {local_storage}")
+                    else:
+                        console.print(f"[yellow]⚠[/yellow] DVC remote add failed: {r.stderr.strip()}")
+                        
+                elif dvc_remote == "minio":
+                    # Resolve config: CLI option > env var > default
+                    endpoint = minio_endpoint or "http://localhost:8811"
+                    bucket = minio_bucket or "s3://zem-data"
+                    access_key = minio_access_key
+                    secret_key = minio_secret_key
+                    
+                    # Remote URL + endpoint (committed to git - safe, no secrets)
+                    r1 = _run_cmd(["dvc", "remote", "add", "-d", "minio", bucket], cwd=base_path)
+                    r2 = _run_cmd(["dvc", "remote", "modify", "minio", "endpointurl", endpoint], cwd=base_path)
+                    
+                    if r1.returncode != 0 or r2.returncode != 0:
+                        err = r1.stderr.strip() or r2.stderr.strip()
+                        console.print(f"[yellow]⚠[/yellow] DVC remote config failed: {err}")
+                    else:
+                        # Credentials in local config (NOT committed to git)
+                        if access_key and secret_key:
+                            _run_cmd(["dvc", "remote", "modify", "--local", "minio", "access_key_id", access_key], cwd=base_path)
+                            _run_cmd(["dvc", "remote", "modify", "--local", "minio", "secret_access_key", secret_key], cwd=base_path)
+                            console.print("[green]✓[/green] DVC MinIO remote configured:")
+                            console.print(f"    Endpoint: [cyan]{endpoint}[/cyan]")
+                            console.print(f"    Bucket:   [cyan]{bucket}[/cyan]")
+                            console.print("[dim]    Credentials stored in .dvc/config.local (not committed)[/dim]")
+                        else:
+                            console.print("[green]✓[/green] DVC MinIO remote configured:")
+                            console.print(f"    Endpoint: [cyan]{endpoint}[/cyan]")
+                            console.print(f"    Bucket:   [cyan]{bucket}[/cyan]")
+                            console.print("[yellow]⚠[/yellow] Credentials not set. Configure with:")
+                            console.print("    [cyan]dvc remote modify --local minio access_key_id YOUR_KEY[/cyan]")
+                            console.print("    [cyan]dvc remote modify --local minio secret_access_key YOUR_SECRET[/cyan]")
+                            console.print("[dim]    Or set env vars: DVC_MINIO_ACCESS_KEY, DVC_MINIO_SECRET_KEY[/dim]")
+                
+                # Commit DVC setup
+                if not no_git:
+                    _run_cmd(["git", "add", ".dvc", ".dvcignore"], cwd=base_path)
+                    cr = _run_cmd(["git", "commit", "-m", "Setup DVC for data versioning"], cwd=base_path)
+                    if cr.returncode == 0:
+                        console.print("[green]✓[/green] Committed DVC configuration")
+                    else:
+                        console.print(f"[yellow]⚠[/yellow] DVC commit failed: {cr.stderr.strip()}")
+            else:
+                console.print(f"[yellow]⚠[/yellow] DVC init failed: {result.stderr.strip()}")
+
+    # Print summary
+    console.print(f"\n[bold green]✅ Project '{project_name}' initialized successfully![/bold green]")
+    console.print("\n[bold]Project structure:[/bold]")
+    console.print(f"""
+  {project_name}/
+  ├── .git/              # Git repository
+  ├── .dvc/              # DVC configuration
+  ├── .gitignore
+  ├── .dvcignore
+  ├── data/              # Data directory (tracked by DVC)
+  ├── servers/
+  │   └── sample_server.py
+  ├── tests/manual/
+  └── pipeline.yaml
+""")
+    
+    console.print("[bold]Next steps:[/bold]")
+    console.print(f"  [cyan]cd {project_name}[/cyan]")
+    console.print(f"  [cyan]zem list-tools -c pipeline.yaml[/cyan]")
+    console.print(f"  [cyan]zem run pipeline.yaml[/cyan]")
+    
+    if not no_dvc:
+        console.print("\n[bold]Data versioning:[/bold]")
+        console.print(f"  [cyan]zem data add data/your_dataset.parquet[/cyan]")
+        console.print(f"  [cyan]zem data push[/cyan]")
+        
+        if dvc_remote == "minio":
+            console.print("\n[bold yellow]Note:[/bold yellow] Ensure MinIO is running:")
+            console.print("  Console: [link=http://localhost:8812]http://localhost:8812[/link]")
+            console.print("  API:     [link=http://localhost:8811]http://localhost:8811[/link]")
 
 @main.command()
 def operators():
@@ -493,6 +678,37 @@ def transcribe(input, output, format, timestamps, verbose, padding, device, no_n
         logger.exception("An error occurred during pipeline execution")
         console.print(f"[bold red]Error during processing:[/bold red] {e}")
         sys.exit(1)
+# =============================================================================
+# Subprocess helpers
+# =============================================================================
+
+def _run_cmd(cmd: list, cwd=None, check: bool = False) -> "subprocess.CompletedProcess":
+    """
+    Run a subprocess with consistent error handling.
+    
+    Args:
+        cmd: Command and arguments list
+        cwd: Working directory
+        check: If True, raise on non-zero exit code
+        
+    Returns:
+        CompletedProcess instance (always has .returncode, .stdout, .stderr)
+    """
+    import subprocess as _sp
+    import shutil
+    
+    # Verify the executable exists before running
+    exe = cmd[0]
+    if not shutil.which(exe):
+        # Return a fake CompletedProcess so callers can check .returncode
+        return _sp.CompletedProcess(cmd, returncode=127, stdout="", stderr=f"{exe}: command not found")
+    
+    result = _sp.run(cmd, cwd=cwd, capture_output=True, text=True)
+    
+    if check and result.returncode != 0:
+        raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}\n{result.stderr}")
+    
+    return result
 
 
 # =============================================================================

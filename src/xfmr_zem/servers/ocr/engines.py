@@ -3,6 +3,11 @@ import abc
 from typing import Dict, Any, List
 from PIL import Image
 from loguru import logger
+import tempfile
+import subprocess
+import glob
+from pathlib import Path
+from dotenv import load_dotenv
 
 class OCREngineBase(abc.ABC):
     """
@@ -79,6 +84,96 @@ class PaddleEngine(OCREngineBase):
             "text": "\n".join(full_text),
             "engine": "paddleocr",
             "metadata": {"avg_confidence": sum(scores)/len(scores) if scores else 0}
+        }
+
+class PaddleVLEngine(OCREngineBase):
+    """
+    OCR using PaddleOCR VL (Vision-Language) pipeline for Markdown extraction.
+    Auto-installs dependencies inside __init__ if missing.
+    """
+    def __init__(self):
+        logger.debug("PaddleVLEngine: Initializing...")
+        _ = load_dotenv(override=True)
+        try:
+            # Thử import lần đầu
+            from paddleocr import PaddleOCRVL
+
+            self.pipeline = PaddleOCRVL()
+            logger.debug("PaddleVLEngine: Initialization complete")
+            
+        except ImportError:
+            logger.warning("PaddleOCR dependencies not found. Auto-installing via 'uv'...")
+            try:
+                # Chạy lệnh cài đặt 1: PaddlePaddle GPU
+                subprocess.check_call([
+                    "uv", "pip", "install", 
+                    "paddlepaddle-gpu==3.2.1", 
+                    "-i", "https://www.paddlepaddle.org.cn/packages/stable/cu126/"
+                ])
+                
+                # Chạy lệnh cài đặt 2: PaddleOCR doc-parser
+                subprocess.check_call([
+                    "uv", "pip", "install", "-U", "paddleocr[doc-parser]"
+                ])
+
+                # Import lại sau khi cài đặt thành công
+                logger.info("Installation complete. Retrying initialization...")
+                from paddleocr import PaddleOCRVL
+                self.pipeline = PaddleOCRVL()
+                logger.success("PaddleVLEngine initialized successfully after installation.")
+                
+            except Exception as e:
+                logger.error(f"Failed to auto-install or initialize PaddleOCR: {e}")
+                raise
+
+    def process(self, image_path: str) -> Dict[str, Any]:
+        logger.info(f"Using PaddleOCR VL to process: {image_path}")
+        
+        # Gọi pipeline
+        output = self.pipeline.predict(str(image_path))
+        file_md = ""
+        
+        # Xử lý kết quả qua file temp
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for res in output:
+                res.save_to_markdown(save_path=temp_dir)
+            
+            md_files = sorted(glob.glob(os.path.join(temp_dir, "*.md")))
+            for md_file in md_files:
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    file_md += f.read() + "\n\n"
+        
+        return {
+            "text": file_md.strip(),
+            "engine": "paddle_vl",
+            "metadata": {"format": "markdown"}
+        }
+
+class LandingAIEngine(OCREngineBase):
+    """
+    OCR using LandingAI for Markdown extraction.
+    """
+    def __init__(self, model: str = "dpt-2-latest"):
+        logger.debug("LandingAIEngine: Initializing...")
+        try:
+            from landingai_ade import LandingAIADE
+            from dotenv import load_dotenv
+            load_dotenv(override=True)
+            self.client = LandingAIADE()
+            self.model = model
+            logger.debug("LandingAIEngine: Initialization complete")
+        except ImportError:
+            logger.error("landingai_ade or python-dotenv not installed.")
+            raise
+
+    def process(self, image_path: str) -> Dict[str, Any]:
+        logger.info(f"Using LandingAI ({self.model}) to process: {image_path}")
+        parse_result = self.client.parse(document=Path(image_path), model=self.model)
+        
+        return {
+            "text": parse_result.markdown,
+            "engine": "landingai",
+            "metadata": {"model": self.model, "format": "markdown"}
         }
 
 class HuggingFaceVLEngine(OCREngineBase):
@@ -234,9 +329,13 @@ class OCREngineFactory:
             return TesseractEngine()
         elif engine_type == "paddle":
             return PaddleEngine()
+        elif engine_type == "paddle_vl":
+            return PaddleVLEngine()
         elif engine_type == "huggingface" or engine_type == "qwen":
             return HuggingFaceVLEngine(model_id=kwargs.get("model_id"))
         elif engine_type == "viet":
             return VietOCREngine()
+        elif engine_type == "landingai":
+            return LandingAIEngine(model=kwargs.get("model", "dpt-2-latest"))
         else:
             raise ValueError(f"Unknown engine type: {engine_type}")
