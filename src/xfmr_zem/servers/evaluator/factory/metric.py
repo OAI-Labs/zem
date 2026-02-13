@@ -1,4 +1,6 @@
 from typing import List, Optional, Any
+import json
+import re
 from opik.evaluation.models import OpikBaseModel
 from opik.evaluation.metrics import (
     Hallucination,
@@ -84,6 +86,62 @@ class LevenshteinRatioMetric(BaseMetric):
     def score(self, **kwargs) -> score_result.ScoreResult:
         return self.metric.score(**kwargs)
 
+class CustomMetric(BaseMetric):
+    def __init__(self, name: str, model: Any):
+        self.name = name
+        self.model = model
+
+    def score(self, input: str, output: str, context: Any = None, expected_output: str = None, **kwargs) -> score_result.ScoreResult:
+        # Prepare context string
+        context_str = ""
+        if isinstance(context, list):
+            context_str = "\n".join([str(c) for c in context])
+        elif context:
+            context_str = str(context)
+
+        prompt = f"""{self.name}
+
+Evaluate from 0.0 to 1.0 (0.0 is furthest from the metric, 1.0 is closest to the metric)
+
+Context:
+{context_str}
+
+Input:
+{input}
+
+Output:
+{output}
+
+Expected Output:
+{expected_output}
+
+Output format (must be a JSONL file with the following 2 fields):
+- score: float. (eng)
+- reason: reason for the score. (eng).
+"""
+        try:
+            result = self.model.generate_string(prompt)
+            # Extract JSON using custom logic
+            try:
+                data = json.loads(result)
+            except json.JSONDecodeError:
+                first_brace = result.find("{")
+                last_brace = result.rfind("}")
+                json_string = result[first_brace : last_brace + 1]
+                data = json.loads(json_string)
+
+            score = float(data.get("score", 0.0))
+            reason = data.get("reason", "No reason provided.")
+        except Exception as e:
+            score = 0.0
+            reason = f"Error evaluating custom metric: {e}"
+
+        return score_result.ScoreResult(
+            name=self.name,
+            value=score,
+            reason=reason
+        )
+
 class MetricFactory:
     """
     Factory to retrieve a list of Opik metrics based on the list of metric names.
@@ -109,4 +167,6 @@ class MetricFactory:
                 metrics.append(GEvalMetric(model=model))
             elif name == "levenshtein_ratio":
                 metrics.append(LevenshteinRatioMetric())
+            else:
+                metrics.append(CustomMetric(name=name, model=model))
         return metrics
