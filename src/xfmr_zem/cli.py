@@ -554,23 +554,11 @@ def preview(artifact_id, id2, limit, sample):
         console.print(f"[bold red]Error previewing artifact:[/bold red] {e}")
 
 
-@main.group()
-def ocr():
-    """OCR related commands (Installation, etc.)"""
-    pass
-
-@ocr.command(name="install")
-def ocr_install():
-    """Install OCR model weights (ONNX/PTH)"""
-    from xfmr_zem.servers.ocr.install_models import main as install_main
-    install_main()
-
-
 # =============================================================================
 # Subprocess helpers
 # =============================================================================
 
-def _run_cmd(cmd: list, cwd=None, check: bool = False) -> "subprocess.CompletedProcess":
+def _run_cmd(cmd: list, cwd=None, check: bool = False):
     """
     Run a subprocess with consistent error handling.
     
@@ -597,6 +585,50 @@ def _run_cmd(cmd: list, cwd=None, check: bool = False) -> "subprocess.CompletedP
         raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}\n{result.stderr}")
     
     return result
+
+
+@main.group()
+def ocr():
+    """OCR related commands (Installation, etc.)"""
+    pass
+
+@ocr.command(name="install")
+def ocr_install():
+    """Install OCR model weights (ONNX/PTH)"""
+    from xfmr_zem.servers.ocr.install_models import main as install_main
+    install_main()
+
+
+@main.group()
+def audio():
+    """Audio module management (Installation & Setup)"""
+    pass
+
+
+@audio.command(name="install")
+@click.option("--cuda", is_flag=True, help="Install CUDA-enabled version of dependencies")
+def audio_install(cuda):
+    """Install Audio model weights and dependencies (k2, kaldifeat, DiariZen, etc.)"""
+    import subprocess
+    import sys
+    
+    script_path = Path(__file__).parent.parent.parent / "scripts" / "setup_audio.py"
+    if not script_path.exists():
+        console.print(f"[bold red]Error:[/bold red] Setup script not found at {script_path}")
+        return
+
+    cmd = [sys.executable, str(script_path)]
+    if cuda:
+        cmd.append("--cuda")
+        
+    console.print(f"[bold blue]🚀 Running Audio Module Setup...[/bold blue]")
+    try:
+        # We run it with inherit to allow user interaction if needed (though script is non-interactive)
+        subprocess.run(cmd, check=True)
+        console.print(f"\n[bold green]✅ Audio Module Setup Finished![/bold green]")
+    except subprocess.CalledProcessError as e:
+        console.print(f"\n[bold red]❌ Setup failed with exit code {e.returncode}[/bold red]")
+
 
 
 # =============================================================================
@@ -706,10 +738,13 @@ def data_add(path, message):
     console.print(f"[green]✓[/green] Added to DVC: {path}")
     
     # Show hash info
-    from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
-    dvc_hash = DVCMetadataExtractor.get_dvc_hash(path)
-    if dvc_hash:
-        console.print(f"[dim]DVC Hash: {dvc_hash}[/dim]")
+    try:
+        from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
+        dvc_hash = DVCMetadataExtractor.get_dvc_hash(path)
+        if dvc_hash:
+            console.print(f"[dim]DVC Hash: {dvc_hash}[/dim]")
+    except ImportError:
+        console.print("[yellow]Warning:[/yellow] Could not load DVC metadata extractor.")
     
     # Git add the .dvc file (only if inside a git repo)
     is_git = _run_cmd(["git", "rev-parse", "--is-inside-work-tree"]).returncode == 0
@@ -813,26 +848,29 @@ def data_status():
     console.print("\n[bold]Tracked Data Files:[/bold]")
     dvc_files = list(Path(".").rglob("*.dvc"))
     if dvc_files:
-        from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
-        
-        table = Table(show_header=True, header_style="bold cyan")
-        table.add_column("File")
-        table.add_column("Hash")
-        table.add_column("Size")
-        
-        for dvc_file in dvc_files:
-            if dvc_file.name == ".dvc":
-                continue
-            data_path = str(dvc_file)[:-4]  # Remove .dvc extension
-            dvc_hash = DVCMetadataExtractor.get_dvc_hash(data_path) or "N/A"
-            stats = DVCMetadataExtractor.get_file_stats(data_path)
-            size = stats.get("size_human", "N/A")
+        try:
+            from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
             
-            # Truncate hash for display
-            hash_display = dvc_hash[:12] + "..." if len(dvc_hash) > 15 else dvc_hash
-            table.add_row(data_path, hash_display, size)
-        
-        console.print(table)
+            table = Table(show_header=True, header_style="bold cyan")
+            table.add_column("File")
+            table.add_column("Hash")
+            table.add_column("Size")
+            
+            for dvc_file in dvc_files:
+                if dvc_file.name == ".dvc":
+                    continue
+                data_path = str(dvc_file)[:-4]  # Remove .dvc extension
+                dvc_hash = DVCMetadataExtractor.get_dvc_hash(data_path) or "N/A"
+                stats = DVCMetadataExtractor.get_file_stats(data_path)
+                size = stats.get("size_human", "N/A")
+                
+                # Truncate hash for display
+                hash_display = dvc_hash[:12] + "..." if len(dvc_hash) > 15 else dvc_hash
+                table.add_row(data_path, hash_display, size)
+            
+            console.print(table)
+        except ImportError:
+            console.print("[yellow]Warning:[/yellow] Could not load DVC metadata extractor.")
     else:
         console.print("[dim]No data files tracked yet[/dim]")
 
@@ -842,39 +880,43 @@ def data_status():
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def data_lineage(path, as_json):
     """Show data lineage and metadata for a tracked file."""
-    from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
-    import json as json_lib
-    
-    lineage = DVCMetadataExtractor.create_lineage_metadata(path)
-    
-    if as_json:
-        console.print(json_lib.dumps(lineage, indent=2, default=str))
-    else:
-        console.print(f"[bold blue]📋 Data Lineage: {path}[/bold blue]\n")
+    try:
+        from xfmr_zem.utils.dvc_metadata import DVCMetadataExtractor
+        import json as json_lib
         
-        # DVC Info
-        console.print("[bold]DVC Information:[/bold]")
-        dvc_info = lineage.get("dvc", {})
-        console.print(f"  Hash: [cyan]{dvc_info.get('hash', 'N/A')}[/cyan]")
-        console.print(f"  Tracked: {'✓' if dvc_info.get('tracked') else '✗'}")
-        if dvc_info.get("remote"):
-            console.print(f"  Remotes: {dvc_info['remote']}")
+        lineage = DVCMetadataExtractor.create_lineage_metadata(path)
         
-        # Git Info
-        console.print("\n[bold]Git Information:[/bold]")
-        git_info = lineage.get("git", {})
-        console.print(f"  Commit: [cyan]{git_info.get('commit', 'N/A')[:12] if git_info.get('commit') else 'N/A'}[/cyan]")
-        console.print(f"  Branch: {git_info.get('branch', 'N/A')}")
-        
-        # Data Info
-        console.print("\n[bold]Data Information:[/bold]")
-        data_info = lineage.get("data", {})
-        console.print(f"  Type: {data_info.get('type', 'N/A')}")
-        console.print(f"  Size: {data_info.get('size_human', 'N/A')}")
-        if data_info.get("file_count"):
-            console.print(f"  Files: {data_info['file_count']}")
-        
-        console.print(f"\n[dim]Timestamp: {lineage.get('timestamp', 'N/A')}[/dim]")
+        if as_json:
+            console.print(json_lib.dumps(lineage, indent=2, default=str))
+        else:
+            console.print(f"[bold blue]📋 Data Lineage: {path}[/bold blue]\n")
+            
+            # DVC Info
+            console.print("[bold]DVC Information:[/bold]")
+            dvc_info = lineage.get("dvc", {})
+            console.print(f"  Hash: [cyan]{dvc_info.get('hash', 'N/A')}[/cyan]")
+            console.print(f"  Tracked: {'✓' if dvc_info.get('tracked') else '✗'}")
+            if dvc_info.get("remote"):
+                console.print(f"  Remotes: {dvc_info['remote']}")
+            
+            # Git Info
+            console.print("\n[bold]Git Information:[/bold]")
+            git_info = lineage.get("git", {})
+            console.print(f"  Commit: [cyan]{git_info.get('commit', 'N/A')[:12] if git_info.get('commit') else 'N/A'}[/cyan]")
+            console.print(f"  Branch: {git_info.get('branch', 'N/A')}")
+            
+            # Data Info
+            console.print("\n[bold]Data Information:[/bold]")
+            data_info = lineage.get("data", {})
+            console.print(f"  Type: {data_info.get('type', 'N/A')}")
+            console.print(f"  Size: {data_info.get('size_human', 'N/A')}")
+            if data_info.get("file_count"):
+                console.print(f"  Files: {data_info['file_count']}")
+            
+            console.print(f"\n[dim]Timestamp: {lineage.get('timestamp', 'N/A')}[/dim]")
+    except ImportError:
+        console.print("[bold red]Error:[/bold red] Could not load DVC metadata extractor utility.")
+
 
 
 if __name__ == "__main__":
