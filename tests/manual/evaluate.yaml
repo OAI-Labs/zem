@@ -22,14 +22,8 @@ pipeline:
       data: $build_ds
       dataset_name: textgen
       metrics:
-        - "hallucination"
-        - "context_recall"
-        - "context_precision"
-        - "answer_relevance" 
-        - "g-eval"
-        - "context_precision"
-        - "answer_relevance" 
-        - "levenshtein_ratio"
+        - "Hãy đo mức độ thân thiện của đoạn văn sau"
+        - "Hallucination"
 
     cache: False
 
