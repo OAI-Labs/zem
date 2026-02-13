@@ -104,6 +104,7 @@ def evaluate(
     project_name: str = "Evaluate LM",
     metrics: list = None,
     limit: int = 1,
+    custom_context: list[str] = None,
     experiment_name: str = "Run Evaluation",
 ) -> Any:
     """
@@ -151,7 +152,7 @@ def evaluate(
     scoring_metrics = MetricFactory.get_metrics(metrics, model=eval_model)
 
     # 5. Define the Task
-    task_runner = TaskFactory.get_task(task_type, model)
+    task_runner = TaskFactory.get_task(task_type, model, custom_context=custom_context)
 
     # # 6. Run Opik Evaluation
     logger.info("Starting Opik Evaluation...")
