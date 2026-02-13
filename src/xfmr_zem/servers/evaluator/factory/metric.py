@@ -2,6 +2,7 @@ from typing import List, Optional, Any
 import json
 import re
 from opik.evaluation.models import OpikBaseModel
+from pydantic import BaseModel, Field
 from opik.evaluation.metrics import (
     Hallucination,
     AnswerRelevance,
@@ -13,6 +14,12 @@ from opik.evaluation.metrics import (
     BaseMetric,
     score_result
 )
+
+from loguru import logger
+import sys
+logger.remove()
+
+logger.add(sys.stderr, level = "DEBUG")
 
 class ExactMatchMetric(BaseMetric):
     def __init__(self, name: str = "exact_match"):
@@ -86,6 +93,10 @@ class LevenshteinRatioMetric(BaseMetric):
     def score(self, **kwargs) -> score_result.ScoreResult:
         return self.metric.score(**kwargs)
 
+class CustomMetricResponse(BaseModel):
+    score: float = Field(description="The score between 0.0 and 1.0")
+    reason: str = Field(description="The reason for the score")
+
 class CustomMetric(BaseMetric):
     def __init__(self, name: str, model: Any):
         self.name = name
@@ -99,29 +110,41 @@ class CustomMetric(BaseMetric):
         elif context:
             context_str = str(context)
 
-        prompt = f"""{self.name}
+        prompt = f"""[SYSTEM INSTRUCTION]
+You are an expert AI evaluator. Your task is to assess the quality of the 'Actual Output' based on the provided 'Input', 'Context', and 'Expected Output'.
 
-Evaluate from 0.0 to 1.0 (0.0 is furthest from the metric, 1.0 is closest to the metric)
+Metric Name: {self.name}
+Scoring Scale: 0.0 (Worst) to 1.0 (Best)
+
+[DATA TO EVALUATE]
+Input:
+{input}
 
 Context:
 {context_str}
 
-Input:
-{input}
-
-Output:
-{output}
-
-Expected Output:
+Expected Output (Reference):
 {expected_output}
 
-Output format (must be a JSONL file with the following 2 fields):
-- score: float. (eng)
-- reason: reason for the score. (eng).
+Actual Output (Target):
+{output}
+
+[OUTPUT REQUIREMENT]
+1. Evaluate the 'Actual Output' objectively.
+2. Return the result strictly in valid JSON format.
+3. Do not include any markdown formatting (like ```json), explanations, or additional text outside the JSON object.
+
+Use exactly the following JSON structure:
+{{
+  "score": <float>,   // A value between 0.0 and 1.0
+  "reason": "<string>" // A concise explanation for the score
+}}
+[/SYSTEM INSTRUCTION]
 """
         try:
-            result = self.model.generate_string(prompt)
+            result = self.model.generate_string(prompt, response_format=CustomMetricResponse)
             # Extract JSON using custom logic
+            logger.debug(f"Custom Metric - generated result: {result}")
             try:
                 data = json.loads(result)
             except json.JSONDecodeError:
