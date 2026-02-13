@@ -1,0 +1,21 @@
+evaluate:
+    dataset_name: "mmlu"
+    test_model_engine:  "huggingface" #Model for testing
+    test_model_id: "Qwen/Qwen2.5-3B-Instruct"
+    evaluate_model_engine: "local"     #Model for evaluation
+    evaluate_provider: "huggingface"
+    evaluate_model_id: "Qwen/Qwen2.5-3B-Instruct"
+    task_type: "generative"    #Other infos
+    project_name: "Evaluate LM"
+    limit: 1
+    metrics: 
+        - "context_recall"
+        - "levenshtein_ratio"
+    experiment_name: "Default Run"
+
+build_opik_dataset:
+    dataset_path: "data/MCQ_dataset.json"
+    dataset_name: "mmlu"
+    dataset_type: "multiple_choice"
+    limit: 10
+    reset: False

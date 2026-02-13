@@ -1,0 +1,30 @@
+# Test configuration for OCR Module
+name: evaluate pipeline
+correlator: xfmr-zem
+
+servers:
+  evaluator: servers/evaluator
+  evaluator: servers/evaluator
+
+
+pipeline:
+  - name: build_ds
+    evaluator.build_opik_dataset:
+      dataset_path: data/TextGen_dataset.json
+      dataset_name: textgen
+      dataset_type: text_generation
+      limit: 10
+      reset: False
+    cache: True
+
+  - name: eval_LM
+    evaluator.evaluate:  
+      data: $build_ds
+      dataset_name: textgen
+      metrics:
+        - "Hãy đo mức độ thân thiện của đoạn văn sau"
+        - "Hallucination"
+
+    cache: False
+
+    
