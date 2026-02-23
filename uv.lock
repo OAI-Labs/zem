@@ -6999,7 +6999,7 @@ wheels = [
 
 [[package]]
 name = "xfmr-zem"
-version = "0.3.0"
+version = "0.3.3"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -7069,7 +7069,11 @@ document = [
     { name = "unstructured", extra = ["all-docs"] },
 ]
 evaluator = [
+    { name = "accelerate" },
+    { name = "litellm" },
     { name = "opik" },
+    { name = "torch" },
+    { name = "transformers" },
 ]
 nemo = [
     { name = "dask-cuda" },
@@ -7144,6 +7148,7 @@ voice = [
 
 [package.metadata]
 requires-dist = [
+    { name = "accelerate", marker = "extra == 'evaluator'", specifier = ">=0.25.0" },
     { name = "accelerate", marker = "extra == 'voice'", specifier = ">=0.25.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "cachetools", marker = "extra == 'ocr'", specifier = ">=5.0.0" },
@@ -7170,6 +7175,7 @@ requires-dist = [
     { name = "lhotse", marker = "extra == 'audio'", specifier = ">=1.24.0" },
     { name = "librosa", marker = "extra == 'all'" },
     { name = "librosa", marker = "extra == 'voice'", specifier = ">=0.10.0" },
+    { name = "litellm", marker = "extra == 'evaluator'", specifier = ">=1.0.0" },
     { name = "loguru", specifier = ">=0.7.0" },
     { name = "matplotlib", marker = "extra == 'voice'", specifier = ">=3.8.0" },
     { name = "mcp", specifier = ">=0.1.0" },
@@ -7233,12 +7239,14 @@ requires-dist = [
     { name = "thop", marker = "extra == 'voice'", specifier = ">=0.1.1" },
     { name = "toml", marker = "extra == 'voice'", specifier = ">=0.10.0" },
     { name = "torch", marker = "extra == 'corrector'", specifier = ">=2.5.0" },
+    { name = "torch", marker = "extra == 'evaluator'", specifier = ">=2.1.0" },
     { name = "torch", marker = "extra == 'ocr'", specifier = ">=2.5.1" },
     { name = "torchaudio", marker = "extra == 'voice'", specifier = ">=2.1.0" },
     { name = "torchinfo", marker = "extra == 'voice'", specifier = ">=1.8.0" },
     { name = "torchvision", marker = "extra == 'corrector'", specifier = ">=0.20.1" },
     { name = "torchvision", marker = "extra == 'ocr'", specifier = ">=0.20.1" },
     { name = "transformers", marker = "extra == 'corrector'", specifier = ">=4.55.2" },
+    { name = "transformers", marker = "extra == 'evaluator'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'ocr'", specifier = ">=4.40.0" },
     { name = "transformers", marker = "extra == 'vn-asr'", specifier = ">=4.40.0" },
     { name = "underthesea", marker = "extra == 'all'", specifier = ">=6.8.0" },
