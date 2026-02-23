@@ -195,6 +195,25 @@ def mcp_generic_step(
     command = server_config.get("command", "python")
     args = server_config.get("args", [])
     env = server_config.get("env", os.environ.copy())
+
+    # Filter tool_args based on tool's inputSchema
+    try:
+        tools = list_mcp_tools(command, args, env)
+        target_tool = next((t for t in tools if t["name"] == tool_name), None)
+        if target_tool and "inputSchema" in target_tool:
+            schema = target_tool["inputSchema"]
+            properties = schema.get("properties", {})
+            valid_keys = set(properties.keys())
+            
+            # Filter arguments
+            original_args = tool_args.copy()
+            tool_args = {k: v for k, v in tool_args.items() if k in valid_keys}
+            
+            removed_keys = set(original_args.keys()) - valid_keys
+            if removed_keys:
+                logger.info(f"[{server_name}] Lọc bỏ tham số dư thừa cho '{tool_name}': {removed_keys}")
+    except Exception as e:
+        logger.warning(f"[{server_name}] Không thể lấy schema để lọc tham số cho '{tool_name}': {e}")
     
     logger.info(f"[{server_name}] Executing tool '{tool_name}'")
     start_time = time.time()

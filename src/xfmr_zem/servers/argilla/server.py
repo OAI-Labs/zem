@@ -70,7 +70,6 @@ def create_dataset(
     guidelines: str = "",
     api_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Tạo hoặc lấy dataset trên Argilla server.
@@ -136,7 +135,6 @@ def push_records(
     batch_size: int = 200,
     api_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Đẩy records từ pipeline vào Argilla dataset.
@@ -456,7 +454,6 @@ def annotation_progress(
     workspace: str = "admin",
     api_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Thống kê tiến độ annotation của dataset.
@@ -622,7 +619,6 @@ def create_user(
     workspace: Optional[str] = None,
     api_url: Optional[str] = None,
     api_key: Optional[str] = None,
-    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Tạo user mới trên Argilla server.
