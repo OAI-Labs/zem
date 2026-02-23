@@ -62,6 +62,7 @@ def _get_client(api_url: Optional[str] = None, api_key: Optional[str] = None):
 # ─────────────────────────────────────────────────────────────────────────────
 @server.tool()
 def create_dataset(
+    data: Any = None,
     name: str = "zem_dataset",
     workspace: str = "admin",
     fields: Optional[List[Dict[str, Any]]] = None,
@@ -74,6 +75,7 @@ def create_dataset(
     Tạo hoặc lấy dataset trên Argilla server.
 
     Args:
+        data: Không dùng, cho phép Zem auto-chain từ step trước
         name: Tên dataset
         workspace: Workspace chứa dataset
         fields: List cấu hình fields. Mỗi field là dict:
@@ -608,8 +610,9 @@ def agreement_score(
 # ─────────────────────────────────────────────────────────────────────────────
 @server.tool()
 def create_user(
-    username: str,
-    password: str,
+    data: Any = None,
+    username: str = "",
+    password: str = "",
     role: str = "annotator",
     first_name: str = "",
     last_name: str = "",
@@ -621,6 +624,7 @@ def create_user(
     Tạo user mới trên Argilla server.
 
     Args:
+        data: Không dùng, cho phép Zem auto-chain từ step trước
         username: Tên đăng nhập (unique)
         password: Mật khẩu (min 8 ký tự)
         role: "annotator" (mặc định) | "admin"
