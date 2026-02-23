@@ -1,4 +1,12 @@
-## [0.3.0] [*](https://github.com/OAI-Labs/xfmr-zem/pull/6) - 2026-02-06
+## [0.3.1] - 2026-02-23
+
+### Changed
+- **Minimal Core Install**: Moved all heavy optional libraries (`nemo-curator`, `dask-cuda`, `sentence-transformers`, `faiss-cpu`, `transformers`, `unstructured`, `python-magic`) out of core `[dependencies]` into explicit optional extras. `pip install xfmr-zem` now only installs the lightweight engine core.
+- **Reorganized Extras**: Grouped optional extras by domain: `[nemo]`, `[datajuicer]`, `[deduplication]`, `[document]`, `[ocr]`, `[corrector]`, `[voice]`, `[evaluator]`, `[ui]`, `[dev]`.
+- **New `[nlp]` bundle**: Convenience extra that installs the full NLP stack (nemo + datajuicer + deduplication) without GPU/OCR/Voice dependencies.
+- **Cleaned `[ocr]` extra**: Removed unrelated packages (`dotenv`, `ipython`, `landingai-ade`, `matplotlib`, `seaborn`).
+
+
 
 ### Added
 - **Two-Stage Deduplication**: Implemented a high-precision pipeline combining MinHash LSH with NER-based filtering and semantic similarity detection.
