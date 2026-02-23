@@ -73,27 +73,21 @@ def create_dataset(
 ) -> Dict[str, Any]:
     """
     Tạo hoặc lấy dataset trên Argilla server.
-
-    Args:
-        data: Không dùng, cho phép Zem auto-chain từ step trước
-        name: Tên dataset
-        workspace: Workspace chứa dataset
-        fields: List cấu hình fields. Mỗi field là dict:
-                {"name": "text", "type": "text"} hoặc {"name": "chat", "type": "chat"}
-        questions: List cấu hình questions. Ví dụ:
-                   {"name": "label", "type": "label", "labels": ["pos", "neg"]}
-                   {"name": "rating", "type": "rating", "values": [1,2,3,4,5]}
-                   {"name": "comment", "type": "text"}
-        guidelines: Hướng dẫn cho annotators
-        api_url: URL Argilla server (override env/config)
-        api_key: API key (override env/config)
-
-    Returns:
-        {"status": "created"|"exists", "dataset_name": str, "workspace": str}
+    Fix lỗi logic indexing trong built-in server 0.3.7.
     """
+    import argilla as rg
     client = _get_client(api_url, api_key)
 
-    # Defaults nếu không truyền
+    # 1. Kiểm tra tồn tại với logic đúng cho Argilla 2.x
+    try:
+        existing = client.datasets(name=name, workspace=workspace)
+        if existing:
+            logger.info(f"Dataset '{name}' đã tồn tại.")
+            return {"status": "exists", "dataset_name": name, "workspace": workspace}
+    except Exception as e:
+        logger.debug(f"Lỗi khi check dataset tồn tại: {e}")
+
+    # 2. Xây dựng config nếu chưa có
     if fields is None:
         fields = [{"name": "text", "type": "text"}]
     if questions is None:
@@ -101,24 +95,46 @@ def create_dataset(
             {"name": "label", "type": "label", "labels": ["positive", "negative", "neutral"]}
         ]
 
-    try:
-        existing = client.datasets(name=name, workspace=workspace)
-        if existing:
-            logger.info(f"Dataset '{name}' đã tồn tại.")
-            return {"status": "exists", "dataset_name": name, "workspace": workspace}
-    except Exception:
-        pass
+    # 3. Tạo mới (sử dụng logic fixed tương tự DatasetFactory)
+    built_fields = []
+    for f in fields:
+        ftype = f.get("type", "text").lower()
+        fname = f["name"]
+        ftitle = f.get("title", fname)
+        built_fields.append(rg.TextField(name=fname, title=ftitle))
 
-    DatasetFactory.create_or_get(
-        client=client,
-        name=name,
-        workspace=workspace,
-        fields=fields,
-        questions=questions,
+    built_questions = []
+    for q in questions:
+        qtype = q.get("type", "label").lower()
+        qname = q["name"]
+        qtitle = q.get("title", qname)
+        if qtype == "label":
+            built_questions.append(rg.LabelQuestion(
+                name=qname, title=qtitle, labels=q.get("labels", []),
+                required=q.get("required", True)
+            ))
+        # Có thể thêm các loại question khác nếu cần
+
+    settings = rg.Settings(
+        fields=built_fields,
+        questions=built_questions,
         guidelines=guidelines,
     )
 
-    return {"status": "created", "dataset_name": name, "workspace": workspace}
+    dataset = rg.Dataset(
+        name=name,
+        workspace=workspace,
+        settings=settings,
+        client=client,
+    )
+    dataset.create()
+    logger.info(f"Đã tạo dataset '{name}'")
+    
+    return {
+        "status": "created",
+        "dataset_name": name,
+        "workspace": workspace
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
