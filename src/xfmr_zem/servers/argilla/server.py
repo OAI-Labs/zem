@@ -599,10 +599,6 @@ def agreement_score(
     return result
 
 
-if __name__ == "__main__":
-    server.run()
-
-
 # =============================================================================
 # Tools 9-13: User / Annotator Management
 # =============================================================================
@@ -779,3 +775,10 @@ def annotator_stats(
         workspace=workspace,
     )
     return server.save_output(stats)
+
+
+# =============================================================================
+# Entry Point – phải đặt SAU khi tất cả tool đã đăng ký
+# =============================================================================
+if __name__ == "__main__":
+    server.run()
