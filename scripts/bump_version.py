@@ -13,7 +13,8 @@ def update_version(new_version: str):
     pyproject_path = project_root / "pyproject.toml"
     if pyproject_path.exists():
         content = pyproject_path.read_text()
-        new_content = re.sub(r'(^version = )".*"', f'\\1"{new_version}"', content, flags=re.MULTILINE)
+        # Dùng \g<1> để tránh ambiguity với version bắt đầu bằng số
+        new_content = re.sub(r'(^version = )".*"', r'\g<1>"' + new_version + '"', content, flags=re.MULTILINE)
         pyproject_path.write_text(new_content)
         logger.info(f"Updated {pyproject_path.relative_to(project_root)}")
     
@@ -21,7 +22,7 @@ def update_version(new_version: str):
     init_path = project_root / "src" / "xfmr_zem" / "__init__.py"
     if init_path.exists():
         content = init_path.read_text()
-        new_content = re.sub(r'(^__version__ = )".*"', f'\\1"{new_version}"', content, flags=re.MULTILINE)
+        new_content = re.sub(r'(^__version__ = )".*"', r'\g<1>"' + new_version + '"', content, flags=re.MULTILINE)
         init_path.write_text(new_content)
         logger.info(f"Updated {init_path.relative_to(project_root)}")
     
@@ -29,11 +30,20 @@ def update_version(new_version: str):
     pkg_path = project_root / "src" / "xfmr_zem" / "ui" / "frontend" / "package.json"
     if pkg_path.exists():
         content = pkg_path.read_text()
-        new_content = re.sub(r'("version": )".*"', f'\\1"{new_version}"', content)
+        new_content = re.sub(r'("version": )".*"', r'\g<1>"' + new_version + '"', content)
         pkg_path.write_text(new_content)
         logger.info(f"Updated {pkg_path.relative_to(project_root)}")
     
-    # 4. Update CHANGELOG.md (Add new header if not exists)
+    # 4. Update README.md (Version Badge)
+    readme_path = project_root / "README.md"
+    if readme_path.exists():
+        content = readme_path.read_text()
+        # Tìm badge version: [![Version](https://img.shields.io/badge/version-X.Y.Z-blue.svg)]
+        new_content = re.sub(r'(badge/version-)\d+\.\d+\.\d+(-blue\.svg)', r'\g<1>' + new_version + r'\g<2>', content)
+        readme_path.write_text(new_content)
+        logger.info(f"Updated {readme_path.relative_to(project_root)}")
+
+    # 5. Update CHANGELOG.md (Add new header if not exists)
     changelog_path = project_root / "CHANGELOG.md"
     if changelog_path.exists():
         content = changelog_path.read_text()
