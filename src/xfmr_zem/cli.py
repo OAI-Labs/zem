@@ -11,12 +11,13 @@ import sys
 from pathlib import Path
 
 from xfmr_zem.client import PipelineClient
+from xfmr_zem import __version__
 
 console = Console()
 
 
 @click.group()
-@click.version_option(version="0.1.0")
+@click.version_option(version=__version__)
 def main():
     """Zem CLI - ZenML + MCP (NeMo Curator & DataJuicer)"""
     pass
@@ -26,7 +27,7 @@ def main():
 def info():
     """Show framework information"""
     console.print("[bold blue]Zem: Unified Data Pipeline Framework[/bold blue]")
-    console.print("Version: 0.1.0")
+    console.print(f"Version: {__version__}")
     console.print("\nArchitecture: [green]Model Context Protocol (MCP) + ZenML[/green]")
     console.print("\nIntegrations:")
     console.print("  - [bold]ZenML[/bold]: Orchestration, Visualization & Artifact Tracking")

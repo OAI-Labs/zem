@@ -1,3 +1,8 @@
+## [0.3.10] - 2026-02-25
+
+### Fixed
+- **Version Sync**: Fixed CLI and `__init__.py` reporting outdated version `0.1.0`. Synchronized all components to version `0.3.10` and implemented dynamic version reporting in CLI.
+
 ## [0.3.1] - 2026-02-23
 
 ### Changed
