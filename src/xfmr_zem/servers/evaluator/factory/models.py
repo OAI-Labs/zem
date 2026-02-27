@@ -1,10 +1,19 @@
 from typing import Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
 import opik
+
 
 class HuggingFaceLM:
     def __init__(self, model_id: str):
+        # Lazy import: chỉ import khi thực sự cần (evaluator-local extra)
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+            import torch
+        except ImportError:
+            raise ImportError(
+                "Thiếu dependencies cho local model. "
+                "Hãy cài: pip install 'xfmr-zem[evaluator-local]'"
+            )
+
         self.model_id = model_id
         print(f"Loading HuggingFace Model: {model_id}")
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -13,7 +22,7 @@ class HuggingFaceLM:
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_id, 
+            model_id,
             torch_dtype="auto",
             device_map="auto"
         )
@@ -31,26 +40,27 @@ class HuggingFaceLM:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": input_text}
         ]
-        
+
         text = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True
         )
-        
+
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
 
         generated_ids = self.model.generate(
             **model_inputs,
             max_new_tokens=512
         )
-        
+
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
         ]
 
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return response
+
 
 class ModelFactory:
     @staticmethod

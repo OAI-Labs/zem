@@ -1,0 +1,8 @@
+# Argilla MCP Server – Cấu hình mặc định
+# Các giá trị này bị override bởi biến môi trường ARGILLA_API_URL, ARGILLA_API_KEY
+# hoặc thông qua ZEM_PARAMETERS khi dùng trong pipeline.yaml
+
+argilla_url: "http://localhost:6900"
+argilla_api_key: "argilla.apikey"
+workspace: "admin"
+default_dataset: "zem_dataset"

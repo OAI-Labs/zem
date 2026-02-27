@@ -1,6 +1,6 @@
 # 🚀 Zem
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/OAI-Labs/xfmr-zem/releases)
+[![Version](https://img.shields.io/badge/version-0.3.11-blue.svg)](https://github.com/OAI-Labs/xfmr-zem/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![ZenML](https://img.shields.io/badge/Orchestration-ZenML-blueviolet)](https://zenml.io)
 [![MCP](https://img.shields.io/badge/Interface-MCP-orange)](https://modelcontextprotocol.io)
