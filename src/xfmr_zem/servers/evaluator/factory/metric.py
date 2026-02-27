@@ -98,8 +98,9 @@ class CustomMetricResponse(BaseModel):
     reason: str = Field(description="The reason for the score")
 
 class CustomMetric(BaseMetric):
-    def __init__(self, name: str, model: Any):
+    def __init__(self, name: str, desc: str, model: Any):
         self.name = name
+        self.desc = desc
         self.model = model
 
     def score(self, input: str, output: str, context: Any = None, expected_output: str = None, **kwargs) -> score_result.ScoreResult:
@@ -114,6 +115,7 @@ class CustomMetric(BaseMetric):
 You are an expert AI evaluator. Your task is to assess the quality of the 'Actual Output' based on the provided 'Input', 'Context', and 'Expected Output'.
 
 Metric Name: {self.name}
+Metric Description: {self.desc}
 Scoring Scale: 0.0 (Worst) to 1.0 (Best)
 
 [DATA TO EVALUATE]
@@ -167,29 +169,63 @@ Use exactly the following JSON structure:
 
 class MetricFactory:
     """
-    Factory to retrieve a list of Opik metrics based on the list of metric names.
+    Factory to retrieve a list of Opik metrics from structured input.
     """
-    
+
     @staticmethod
-    def get_metrics(metric_names: List[str], model: Optional[Any] = None) -> List[BaseMetric]:
+    def get_metrics(metric_specs: List[Any], model: Optional[Any] = None) -> List[BaseMetric]:
+        valid_metrics = {
+            "exact_match": lambda: ExactMatchMetric(),
+            "hallucination": lambda: HallucinationMetric(model=model),
+            "answer_relevance": lambda: AnswerRelevanceMetric(model=model),
+            "context_recall": lambda: ContextRecallMetric(model=model),
+            "context_precision": lambda: ContextPrecisionMetric(model=model),
+            "moderation": lambda: ModerationMetric(model=model),
+            "g_eval": lambda: GEvalMetric(model=model),
+            "levenshtein_ratio": lambda: LevenshteinRatioMetric(),
+        }
         metrics = []
-        for name in metric_names:
-            if name == "exact_match":
-                metrics.append(ExactMatchMetric())
-            elif name == "hallucination":
-                metrics.append(HallucinationMetric(model=model))
-            elif name == "answer_relevance":
-                metrics.append(AnswerRelevanceMetric(model=model))
-            elif name == "context_recall":
-                metrics.append(ContextRecallMetric(model=model))
-            elif name == "context_precision":
-                metrics.append(ContextPrecisionMetric(model=model))
-            elif name == "moderation":
-                metrics.append(ModerationMetric(model=model))
-            elif name == "g_eval":
-                metrics.append(GEvalMetric(model=model))
-            elif name == "levenshtein_ratio":
-                metrics.append(LevenshteinRatioMetric())
-            else:
-                metrics.append(CustomMetric(name=name, model=model))
+        valid_metric_names = "\n".join(sorted(valid_metrics.keys()))
+
+        for spec in metric_specs:
+            if isinstance(spec, str):
+                spec = {"name": spec}
+
+            if not isinstance(spec, dict):
+                raise ValueError(
+                    "Metric entry must be a dictionary with at least a 'name' key."
+                )
+
+            name = spec.get("name")
+            if not name:
+                raise ValueError(
+                    "Metric dictionary missing required 'name' key."
+                )
+
+            description = spec.get("description")
+
+            if description:
+                metrics.append(CustomMetric(name=name, desc=description, model=model))
+                continue
+
+            factory = valid_metrics.get(name)
+            if not factory:
+                raise ValueError(
+                    f"Metric '{name}' is invalid; add description or modify name to match valid metrics:\n{valid_metric_names}"
+                )
+
+            metrics.append(factory())
+
         return metrics
+
+if (__name__ == "__main__"):
+    list_metric = [
+        {"name": "exact_match"},
+        {"name": "Friendly",
+         "description": "Scores how friendly the response is."},
+        {"name": "bruh"}
+    ]
+
+    metrics = MetricFactory.get_metrics(list_metric)
+    for metric in metrics:
+        print(metric.name)
