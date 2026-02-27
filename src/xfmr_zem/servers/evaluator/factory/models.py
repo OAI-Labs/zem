@@ -61,7 +61,11 @@ class HuggingFaceLM:
         response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return response
 
-
+class vLLM:
+    def __init__(self, model_id: str):
+        # Placeholder for future vLLM implementation
+        raise NotImplementedError("vLLM support is not implemented yet.")
+        
 class ModelFactory:
     @staticmethod
     def get_model(engine_type: str, model_id: str) -> Any:
