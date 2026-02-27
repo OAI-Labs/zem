@@ -8,7 +8,7 @@ from opik import Opik
 
 from xfmr_zem.server import ZemServer
 from loguru import logger
-from typing import Any
+from typing import Any, Optional
 from dotenv import load_dotenv
 
 # Import our engines
@@ -135,13 +135,16 @@ def setup_opik_client(
 
 @server.tool()
 def build_opik_dataset(
+    data: Any,
     dataset_path: str = "data/MCQ_dataset.json",
     dataset_name: str = "mmlu",
     dataset_type: str = "multiple_choice",
+    dataset_instruction: str = None,
+    dataset_index: int = None,
     use_access_token: bool = False,
     workspace: str = None,
     project: str = None,
-    limit: int = 10,
+    limit: int = None,
     reset: bool = False,
     host_url: str = None,  #Host URL in case not set in env 
     api_key: str = None,  #API KEY in case not set in env 
@@ -154,10 +157,12 @@ def build_opik_dataset(
         dataset_path: Path to the local dataset file
         dataset_name: Name of the dataset in Opik
         dataset_type: Type of task (e.g., 'multiple_choice')
+        dataset_instruction: Optional custom instruction to insert into each prompt/context.
+        dataset_index: Numbering mode for multiple-choice options (None=no numbers, 0=start at 0, otherwise start at 1).
         limit: Maximum number of items to load
         reset: If True, delete existing dataset and create new one
     """
-    client = set_up_opik_client(
+    client = setup_opik_client(
         host_url=host_url,
         api_key=api_key,
         workspace=workspace,
@@ -180,10 +185,12 @@ def build_opik_dataset(
 
         # Load data from file
         dataset_obj = DatasetFactory.get_dataset(
-            dataset_type=dataset_type,
-            dataset_path=dataset_path,
-            limit=limit
-        )
+        dataset_type=dataset_type,
+        dataset_path=dataset_path,
+        limit=limit,
+        task_instruction=dataset_instruction,
+        index=dataset_index
+    )
         dataset_items = dataset_obj.load_data()
         
         # Create dataset (will create new or get existing if not reset)
@@ -220,9 +227,9 @@ def evaluate(
     metrics: list = None,
     limit: int = 1,
     custom_context: list[str] = None,
-    project: str = "Evaluate LM",
-    experiment: str = "Run Evaluation",
-    workspace: str = "default",
+    project: str = None,
+    experiment: str = None,
+    workspace: str = None,
     host_url: str = None,
     api_key: str = None,
     use_access_token: bool = False
@@ -230,7 +237,7 @@ def evaluate(
     """
     Evaluates a model on an existing Opik dataset.
     """   
-    client = set_up_opik_client(
+    client = setup_opik_client(
         host_url=host_url,
         api_key=api_key,
         workspace=workspace,
