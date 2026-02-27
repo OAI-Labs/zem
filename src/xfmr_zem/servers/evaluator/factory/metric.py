@@ -98,9 +98,9 @@ class CustomMetricResponse(BaseModel):
     reason: str = Field(description="The reason for the score")
 
 class CustomMetric(BaseMetric):
-    def __init__(self, name: str, desc: str, model: Any):
+    def __init__(self, name: str, criteria: str, model: Any):
         self.name = name
-        self.desc = desc
+        self.criteria = criteria
         self.model = model
 
     def score(self, input: str, output: str, context: Any = None, expected_output: str = None, **kwargs) -> score_result.ScoreResult:
@@ -115,7 +115,7 @@ class CustomMetric(BaseMetric):
 You are an expert AI evaluator. Your task is to assess the quality of the 'Actual Output' based on the provided 'Input', 'Context', and 'Expected Output'.
 
 Metric Name: {self.name}
-Metric Description: {self.desc}
+Metric Criteria: {self.criteria}
 Scoring Scale: 0.0 (Worst) to 1.0 (Best)
 
 [DATA TO EVALUATE]
@@ -202,10 +202,10 @@ class MetricFactory:
                     "Metric dictionary missing required 'name' key."
                 )
 
-            description = spec.get("description")
+            criteria = spec.get("criteria")
 
-            if description:
-                metrics.append(CustomMetric(name=name, desc=description, model=model))
+            if criteria:
+                metrics.append(CustomMetric(name=name, criteria=criteria, model=model))
                 continue
 
             factory = valid_metrics.get(name)
@@ -221,8 +221,8 @@ class MetricFactory:
 if (__name__ == "__main__"):
     list_metric = [
         {"name": "exact_match"},
-        {"name": "Friendly",
-         "description": "Scores how friendly the response is."},
+        {"name": "accuracy",
+         "criteria": "Scores how accurate the response is compared to the expected output."},
         {"name": "bruh"}
     ]
 
