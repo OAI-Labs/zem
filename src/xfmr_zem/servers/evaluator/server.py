@@ -88,6 +88,8 @@ def build_opik_dataset(
     project: str = None,
     limit: int = 10,
     reset: bool = False,
+    host_url: str = None,  #Host URL in case not set in env 
+    api_key: str = None,  #API KEY in case not set in env 
 ) -> Any:
     """
     Loads a local dataset (JSON) and uploads it to Opik.
@@ -105,14 +107,19 @@ def build_opik_dataset(
     # 1. Configure Opik
     logger.info("Configuring Opik...")
 
-    host_url = os.getenv("OPIK_BASE_URL", None)
-    api_key = os.getenv("OPIK_API_KEY", None)
+    if (not host_url):
+        host_url = os.getenv("OPIK_HOST_URL", None)
 
-    logger.info(f"your host_url: {host_url}")
-    logger.info(f"your api_key: {api_key}")
+    if (not api_key):
+        api_key = os.getenv("OPIK_API_KEY", None)
+
+
     if (use_access_token):
         access_token = get_access_token()
         api_key = f"Bearer {access_token}"
+
+    logger.info(f"your host_url: {host_url}")
+    logger.info(f"your api_key: {api_key}")
 
     if (not api_key):
         raise ValueError("api_key not found.")
@@ -186,11 +193,14 @@ def evaluate(
     evaluate_model_id: str = "Qwen/Qwen2.5-1.5B-Instruct",
 
     task_type: str = "generative",     
-    project_name: str = "Evaluate LM",
     metrics: list = None,
     limit: int = 1,
     custom_context: list[str] = None,
-    experiment_name: str = "Run Evaluation",
+    project: str = "Evaluate LM",
+    experiment: str = "Run Evaluation",
+    workspace: str = "default",
+    host_url: str = None,
+    api_key: str = None
 ) -> Any:
     """
     Evaluates a model on an existing Opik dataset.
@@ -199,11 +209,13 @@ def evaluate(
 
     # 1. Configure Opik
     logger.info("Configuring Opik...")
-    opik.configure(
-        url=os.getenv("OPIK_BASE_URL", None),
-        api_key=os.getenv("OPIK_API_KEY", None)
+
+    client = Opik(
+        host=host_url,
+        api_key=api_key,
+        workspace=None,
+        project_name = project
     )
-    client = Opik()
 
     # 2. Get the Model
     logger.info(f"Initializing Model: {test_model_id} ({test_model_engine})")
@@ -249,8 +261,8 @@ def evaluate(
         task=task_runner.run,
         nb_samples=limit,
         scoring_metrics=scoring_metrics,
-        project_name=project_name,
-        experiment_name=experiment_name
+        project_name=project,
+        experiment_name=experiment
     )    
     return results
 

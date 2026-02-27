@@ -1,21 +1,34 @@
 evaluate:
-    dataset_name: "mmlu"
-    test_model_engine:  "huggingface" #Model for testing
-    test_model_id: "Qwen/Qwen2.5-3B-Instruct"
-    evaluate_model_engine: "local"     #Model for evaluation
-    evaluate_provider: "huggingface"
-    evaluate_model_id: "Qwen/Qwen2.5-3B-Instruct"
-    task_type: "generative"    #Other infos
-    project_name: "Evaluate LM"
-    limit: 1
-    metrics: 
-        - "context_recall"
-        - "levenshtein_ratio"
-    experiment_name: "Default Run"
+  dataset_name: "mmlu"
+  test_model_engine: "huggingface"
+  test_model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+
+  evaluate_model_engine: "local"
+  evaluate_provider: "huggingface"
+  evaluate_model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+
+  task_type: "generative"
+  metrics: 
+    - name: friendly
+      description: "Hãy đo mức độ thân thiện của đoạn văn sau"
+    - name: exact_match
+  limit: 1
+  custom_context: 
+    - "You are a helpful and precise assistant for checking the quality of the answer."
+  project: "Evaluate LM"
+  experiment: "Run Evaluation"
+  workspace: "default"
+  host_url: null
+  api_key: "YOUR_OPIK_API_KEY"
 
 build_opik_dataset:
-    dataset_path: "data/MCQ_dataset.json"
-    dataset_name: "mmlu"
-    dataset_type: "multiple_choice"
-    limit: 10
-    reset: False
+  dataset_path: "data/MCQ_dataset.json"
+  dataset_name: "mmlu"
+  dataset_type: "multiple_choice"
+  use_access_token: false
+  workspace: "Your Opik workspace goes here"
+  project: "Your Opik project goes here"
+  limit: 10
+  reset: false
+  host_url: null
+  api_key: "Your OPIK_API_KEY goes here"
