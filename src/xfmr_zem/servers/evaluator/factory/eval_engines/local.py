@@ -68,7 +68,7 @@ class OpikHFModel(OpikBaseModel):
     @logger.catch(reraise=True)
     @track(name="hf_generate_string")
     def generate_string(self, input: str, response_format: Any = None, **kwargs: Any) -> str:
-        logger.info(f"\n--- [GENERATE START] ---\n")
+        logger.info(f"\n--- [START GENERATING] ---\n")
 
         params = {
             "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
@@ -84,7 +84,6 @@ class OpikHFModel(OpikBaseModel):
             if not response_format:
                 return raw_text
 
-            logger.info("--- [VALIDATING JSON] ---")
             json_str = self._extract_json_string(raw_text)
             data = json.loads(json_str)
 
@@ -108,19 +107,7 @@ class OpikHFModel(OpikBaseModel):
 
     @track(name="hf_generate_provider_response")
     def generate_provider_response(self, messages: List[Dict[str, Any]], **kwargs: Any) -> Any:
-        prompt = "\n".join([f"{m.get('role','').title()}: {m.get('content','')}" for m in messages])
-        prompt += "\nAssistant:"
-
-        generated_text = self.generate_string(
-            prompt,
-            response_format=kwargs.pop("response_format", None),
-            **kwargs
-        )
-
-        return {
-            "choices": [{"message": {"role": "assistant", "content": generated_text}}],
-            "model": self.model_id
-        }
+        pass
 
 
 class OpikLocalFactory:
