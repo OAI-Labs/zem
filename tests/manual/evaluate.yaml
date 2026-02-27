@@ -4,27 +4,36 @@ correlator: xfmr-zem
 
 servers:
   evaluator: servers/evaluator
-  evaluator: servers/evaluator
 
 
 pipeline:
   - name: build_ds
     evaluator.build_opik_dataset:
-      dataset_path: data/TextGen_dataset.json
-      dataset_name: textgen
-      dataset_type: text_generation
+      dataset_path: data/MCQ_dataset.json
+      dataset_name: mcq_vbench_testing
+      dataset_type: multiple_choice
+      use_access_token: True
       limit: 10
       reset: False
-    cache: True
+      workspace: default
+      project: vbench_debug
+      host_url: https://opik.note.transformerlabs.ai/api
+    cache: False
 
   - name: eval_LM
     evaluator.evaluate:  
       data: $build_ds
-      dataset_name: textgen
+      dataset_name: mcq_vbench_testing
       metrics:
-        - "Hãy đo mức độ thân thiện của đoạn văn sau"
-        - "Hallucination"
-
+        - name: accuracy
+          criteria: "Hãy đo mức độ chính xác của câu trả lời của mô hình dựa trên việc so sánh với đáp án đúng."
+        - name: exact_match
+      workspace: default
+      project: vbench_debug
+      use_access_token: True
+      host_url: https://opik.note.transformerlabs.ai/api
+      experiment: "Test MCQ"
+      limit: 2
     cache: False
 
     
