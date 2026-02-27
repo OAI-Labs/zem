@@ -78,6 +78,61 @@ def get_access_token():
             f"{error}. Usage: {' | '.join(usage)}"
         ) from error
 
+def setup_opik_client(
+    host_url: str = None,
+    api_key: str = None,
+    workspace: str = None,
+    project: str = None,
+    use_access_token: bool = False,
+) -> Opik:
+    _ = load_dotenv(override=True)
+
+    logger.info("Configuring Opik...")
+
+    if not host_url:
+        host_url = os.getenv("OPIK_HOST_URL", None)
+
+    if not api_key:
+        api_key = os.getenv("OPIK_API_KEY", None)
+
+    if use_access_token:
+        access_token = get_access_token()
+        api_key = f"Bearer {access_token}"
+
+    # logger.info(f"your host_url: {host_url}")
+    # logger.info(f"your api_key: {api_key}")
+
+    if not os.environ.get("OPIK_API_KEY") and api_key:
+        os.environ["OPIK_API_KEY"] = str(api_key)
+
+    if not os.environ.get("OPIK_HOST_URL") and host_url:
+        os.environ["OPIK_HOST_URL"] = str(host_url)
+    
+    if not os.environ.get("OPIK_URL_OVERRIDE"):
+        os.environ["OPIK_URL_OVERRIDE"] = str(host_url)
+
+    if not api_key:
+        raise ValueError("api_key not found.")
+
+    if not host_url:
+        raise ValueError("host_url not found.")
+
+    client = Opik(
+        host=host_url,
+        api_key=api_key,
+        workspace=workspace,
+        project_name=project
+    )
+
+    client.trace(
+        name="sdk_client_test",
+        input={"test": "client_initialization"},
+        output={"status": "success"}
+    )
+    logger.info(f"[+] Successfully created trace in project '{project}'")
+
+    return client
+
 @server.tool()
 def build_opik_dataset(
     dataset_path: str = "data/MCQ_dataset.json",
@@ -102,44 +157,13 @@ def build_opik_dataset(
         limit: Maximum number of items to load
         reset: If True, delete existing dataset and create new one
     """
-    _ = load_dotenv(override=True)
-
-    # 1. Configure Opik
-    logger.info("Configuring Opik...")
-
-    if (not host_url):
-        host_url = os.getenv("OPIK_HOST_URL", None)
-
-    if (not api_key):
-        api_key = os.getenv("OPIK_API_KEY", None)
-
-
-    if (use_access_token):
-        access_token = get_access_token()
-        api_key = f"Bearer {access_token}"
-
-    logger.info(f"your host_url: {host_url}")
-    logger.info(f"your api_key: {api_key}")
-
-    if (not api_key):
-        raise ValueError("api_key not found.")
-
-    if (not host_url):
-        raise ValueError("host_url not found.")
-
-    client = Opik(
-        host=host_url,
+    client = set_up_opik_client(
+        host_url=host_url,
         api_key=api_key,
         workspace=workspace,
-        project_name = project
+        project=project,
+        use_access_token=use_access_token,
     )
-
-    trace = client.trace(
-        name="sdk_client_test",
-        input={"test": "client_initialization"},
-        output={"status": "success"}
-    )
-    logger.info(f"[+] Successfully created trace in project '{project}'")
 
     # 2. Load and Upload Dataset
     logger.info(f"Loading Dataset from local file: {dataset_path} (type={dataset_type}, reset={reset})")
@@ -200,21 +224,18 @@ def evaluate(
     experiment: str = "Run Evaluation",
     workspace: str = "default",
     host_url: str = None,
-    api_key: str = None
+    api_key: str = None,
+    use_access_token: bool = False
 ) -> Any:
     """
     Evaluates a model on an existing Opik dataset.
     """   
-    _ = load_dotenv(override=True)
-
-    # 1. Configure Opik
-    logger.info("Configuring Opik...")
-
-    client = Opik(
-        host=host_url,
+    client = set_up_opik_client(
+        host_url=host_url,
         api_key=api_key,
-        workspace=None,
-        project_name = project
+        workspace=workspace,
+        project=project,
+        use_access_token=use_access_token,
     )
 
     # 2. Get the Model
@@ -264,6 +285,8 @@ def evaluate(
         project_name=project,
         experiment_name=experiment
     )    
+
+
     return results
 
 
