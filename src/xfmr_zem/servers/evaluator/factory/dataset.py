@@ -1,17 +1,11 @@
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 import json
 from loguru import logger
 
 class BaseDataset:
-    def __init__(
-        self, 
-        dataset_path: str, 
-        limit: int = 100,
-        field_mapping: Optional[Dict[str, str]] = None
-    ):
+    def __init__(self, dataset_path: str, limit: Optional[int] = None):
         self.dataset_path = dataset_path
         self.limit = limit
-        self.field_mapping = field_mapping
 
     def load_data(self) -> List[Dict[str, Any]]:
         logger.info(f"Loading dataset from: {self.dataset_path}")
@@ -25,20 +19,12 @@ class BaseDataset:
         if not isinstance(data, list):
              raise ValueError("Dataset file must contain a JSON list of items.")
 
-        # Limit
-        if self.limit and len(data) > self.limit:
+        if isinstance(self.limit, int) and self.limit > 0 and len(data) > self.limit:
             data = data[:self.limit]
 
         transformed_data = []
-        for item in data:
-            # 1. Mapping: Đưa các trường từ file về tên chuẩn (input, context, reference)
-            if self.field_mapping:
-                for standard_key, file_key in self.field_mapping.items():
-                    if file_key in item:
-                        item[standard_key] = item[file_key]
-
-            # 2. Process: Xử lý logic tạo prompt
-            processed_item = self.process_item(item)
+        for index, item in enumerate(data):
+            processed_item = self.process_item(item, index)
             
             # 3. Validate: Kiểm tra đầu ra cuối cùng
             if processed_item and self.validate(processed_item):
@@ -49,7 +35,7 @@ class BaseDataset:
         logger.info(f"Successfully loaded and transformed {len(transformed_data)} items.")
         return transformed_data
 
-    def process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+    def process_item(self, item: Dict[str, Any], index: int) -> Dict[str, Any]:
         """
         Hàm này bắt buộc phải trả về dict có 3 key:
         - input
@@ -72,50 +58,63 @@ class BaseDataset:
             
         return True
 
-
 class MultipleChoiceDataset(BaseDataset):
     def __init__(
         self, 
         dataset_path: str, 
-        limit: int = 100,
-        input_field: str = "input", 
-        choices_field: str = "choices", 
-        reference_field: str = "output",
-        context_field: str = "context",
+        limit: Optional[int] = None,
+        task_instruction: Optional[str] = None,
+        index: Optional[int] = 1,
     ):
-        # Mapping thẳng về tên chuẩn như bạn yêu cầu
-        mapping = {
-            "input": input_field,
-            "choices": choices_field,
-            "reference": reference_field,
-            "context": context_field
-        }
-        self.task_instruction = "The model is in a multiple-choice task. Please select the correct answer and output it in the format ['index']. Index starts from 0."
-        super().__init__(dataset_path, limit, field_mapping=mapping)
+        default_instruction = "The model is in a multiple-choice task. Please select the correct answer and output it in the format ['index']. Index starts from 0."
+        self.task_instruction = task_instruction or default_instruction
+        self.choice_index = index
+        super().__init__(dataset_path, limit)
 
-    def process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        # Lấy dữ liệu bằng đúng key chuẩn
-        question = item.get("input", "")
-        choices = item.get("choices", [])
+    def process_item(self, item: Dict[str, Any], index: int) -> Dict[str, Any]:
+        try:
+            question = item["input"]
+            choices = item["choices"]
+            reference = item["output"]
+        except KeyError as exc:
+            raise ValueError(
+                f"Dataset item at index {index} missing required key '{exc.args[0]}'. Dữ liệu chưa đúng chuẩn."
+            ) from exc
+
         context = item.get("context", "")
-        reference = item.get("reference")
 
-        # Xử lý Context
         context_list = []
         if context:
             if isinstance(context, list):
                 context_list.extend([str(c) for c in context])
             else:
                 context_list.append(str(context))
-        
+
         context_list.append(self.task_instruction)
 
-        # Xử lý Input (Tạo prompt)
-        if not choices:
-            logger.warning("Multiple choice item missing choices.")
-            return None
+        choice_lines = []
 
-        choices_str = "\n".join([f"{i}. {c}" for i, c in enumerate(choices)])
+        if isinstance(choices, dict):
+            for key, value in choices.items():
+                choice_lines.append(f"{key}. {value}")
+        elif isinstance(choices, list):
+            if self.choice_index is None:
+                for option in choices:
+                    choice_lines.append(str(option))
+            else:
+                start_point = 0 if self.choice_index == 0 else 1
+                for offset, option in enumerate(choices):
+                    choice_lines.append(f"{start_point + offset}. {option}")
+        else:
+            raise ValueError(
+                f"Invalid type for choices at index {index}: expected list or dict, got {type(choices)}"
+            )
+
+        if not choice_lines:
+            raise ValueError(f"Dataset item at index {index} contains no choices.")
+
+        choices_str = "\n".join(choice_lines)
+
         final_prompt = (
             f"{self.task_instruction}\n\n"
             f"Context: {context if context else 'None'}\n"
@@ -123,14 +122,14 @@ class MultipleChoiceDataset(BaseDataset):
             f"Choices:\n{choices_str}\n"
             f"Answer:"
         )
-        
-        # Xử lý Output
-        final_output = f"['{reference}']" if reference is not None else "['']"
+
+        final_output = f"['{reference}']"
 
         return {
             "input": final_prompt,
             "context": context_list,
-            "reference": final_output
+            "reference": final_output,
+            "index": index
         }
 
 
@@ -138,47 +137,41 @@ class TextGenerationDataset(BaseDataset):
     def __init__(
         self, 
         dataset_path: str, 
-        limit: int = 100,
-        input_field: str = "input", 
-        reference_field: str = "output", 
-        context_field: str = "context",
+        limit: Optional[int] = None,
+        task_instruction: Optional[str] = None,
     ):
         # Mapping thẳng về tên chuẩn
-        mapping = {
-            "input": input_field,
-            "context": context_field,
-            "reference": reference_field,
-        }
-        self.task_instruction = "The model is in a text generation task and must generate a response based on the context."
-        super().__init__(dataset_path, limit, field_mapping=mapping)
+        default_instruction = "The model is in a text generation task and must generate a response based on the context."
+        self.task_instruction = task_instruction or default_instruction
+        super().__init__(dataset_path, limit)
 
-    def process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        # Lấy dữ liệu bằng đúng key chuẩn
-        question = item.get("input", "")
+    def process_item(self, item: Dict[str, Any], index: int) -> Dict[str, Any]:
+        try:
+            question = item["input"]
+            reference = item["output"]
+        except KeyError as exc:
+            raise ValueError(
+                f"Dataset item at index {index} missing required key '{exc.args[0]}'. Dữ liệu chưa đúng chuẩn."
+            ) from exc
         context = item.get("context", "")
-        reference = item.get("reference", "")
 
-        # Xử lý Context
         context_list = []
         if context:
             if isinstance(context, list):
                 context_list.extend([str(c) for c in context])
             else:
                 context_list.append(str(context))
-        
+
         context_list.append(self.task_instruction)
 
-        # Xử lý Input (Tạo prompt)
-        context_str = "\n".join(context_list[:-1]) 
+        context_str = "\n".join(context_list[:-1])
         final_prompt = f"System: {self.task_instruction}\nContext: {context_str}\nQuestion: {question}\nAnswer:"
-
-        # Xử lý Output
-        final_output = str(reference)
 
         return {
             "input": final_prompt,
             "context": context_list,
-            "reference": final_output
+            "reference": str(reference),
+            "index": index
         }
 
 
@@ -187,29 +180,23 @@ class DatasetFactory:
     def get_dataset(
         dataset_type: str, 
         dataset_path: str, 
-        limit: int = 100,
-        input_field: str = "input",
-        choices_field: str = "choices",
-        reference_field: str = "output",
-        context_field: str = "context",
+        limit: Optional[int] = None,
+        task_instruction: Optional[str] = None,
+        index: Optional[int] = 1,
         **kwargs
     ) -> BaseDataset:
         if dataset_type == "multiple_choice":
             return MultipleChoiceDataset(
                 dataset_path=dataset_path, 
                 limit=limit,
-                input_field=input_field,
-                choices_field=choices_field,
-                reference_field=reference_field,
-                context_field=context_field
+                task_instruction=task_instruction,
+                index=index
             )
         elif dataset_type == "text_generation":
             return TextGenerationDataset(
                 dataset_path=dataset_path, 
                 limit=limit,
-                input_field=input_field,
-                reference_field=reference_field,
-                context_field=context_field
+                task_instruction=task_instruction
             )
         else:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
