@@ -216,12 +216,15 @@ def build_opik_dataset(
 def evaluate(
     data: Any,
     dataset_name: str = "mmlu",
+
     test_model_engine: str = "huggingface",  
     test_model_id: str = "Qwen/Qwen2.5-1.5B-Instruct",
-
+    test_model_params: dict = None,
+    
     evaluate_model_engine: str = "local",    
     evaluate_provider: str = "huggingface",
     evaluate_model_id: str = "Qwen/Qwen2.5-1.5B-Instruct",
+    evaluate_model_params: dict = None,
 
     task_type: str = "generative",     
     metrics: list = None,
@@ -247,13 +250,16 @@ def evaluate(
 
     # 2. Get the Model
     logger.info(f"Initializing Model: {test_model_id} ({test_model_engine})")
-    model = ModelFactory.get_model(test_model_engine, test_model_id)
+    model = ModelFactory.get_model(test_model_engine, test_model_id, test_model_params)
 
     # 2.5 Get Evaluation Model
     logger.info(f"Initializing Evaluation Model: {evaluate_model_id} (Engine: {evaluate_model_engine}, Provider: {evaluate_provider})")
-    eval_model = EvaluateModelFactory.get_model(engine = evaluate_model_engine, 
-                                                provider = evaluate_provider, 
-                                                model_id = evaluate_model_id)
+    eval_model = EvaluateModelFactory.get_model(
+        engine = evaluate_model_engine,
+        provider = evaluate_provider,
+        model_id = evaluate_model_id,
+        model_params = evaluate_model_params
+    )
 
     # 3. Get the Dataset
     logger.info(f"Loading Dataset from Opik: {dataset_name}")

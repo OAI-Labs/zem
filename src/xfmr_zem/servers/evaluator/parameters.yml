@@ -9,26 +9,29 @@ evaluate:
 
   task_type: "generative"
   metrics: 
-    - name: friendly
-      description: "Hãy đo mức độ thân thiện của đoạn văn sau"
-    - name: exact_match
+    - name: "accuracy"
+      criteria: "Hãy đo mức độ chính xác của câu trả lời của mô hình dựa trên việc so sánh với đáp án đúng."
+    - name: "exact_match"
   limit: 1
   custom_context: 
-    - "You are a helpful and precise assistant for checking the quality of the answer."
-  project: "Evaluate LM"
-  experiment: "Run Evaluation"
-  workspace: "default"
-  host_url: null
-  api_key: "YOUR_OPIK_API_KEY"
+    - You are a helpful and precise assistant for checking the correctness of the answer. Please answer with "correct" if the answer is correct, and "incorrect" if the answer is incorrect.
+  project: Evaluate LM
+  experiment: Run LM Evaluation
+  workspace: default
+  host_url: "YOUR HOST URL goes here"
+  api_key: "YOUR API KEY goes here"
+  use_access_token: false
 
 build_opik_dataset:
   dataset_path: "data/MCQ_dataset.json"
   dataset_name: "mmlu"
   dataset_type: "multiple_choice"
+  dataset_instruction: "You are a AI model"
+  dataset_index: 1
   use_access_token: false
-  workspace: "Your Opik workspace goes here"
-  project: "Your Opik project goes here"
-  limit: 10
+  workspace: "default"
+  project: "Evaluate LM"
+  limit: 1
   reset: false
-  host_url: null
-  api_key: "Your OPIK_API_KEY goes here"
+  host_url: "Your Host_URL goes here"  # Host URL in case not set in env 
+  api_key: "Your API Key goes here"   # API KEY in case not set in env
