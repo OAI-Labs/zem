@@ -13,7 +13,7 @@ from opik.evaluation.models import OpikBaseModel
 
 
 class OpikHFModel(OpikBaseModel):
-    def __init__(self, model_id: str, **kwargs):
+    def __init__(self, model_id: str, model_params: dict, **kwargs):
         # Lazy import: chỉ import khi thực sự cần (evaluator-local extra)
         try:
             import torch
@@ -30,9 +30,10 @@ class OpikHFModel(OpikBaseModel):
 
         super().__init__(model_name=model_id)
         self.model_id = model_id
-        self.max_new_tokens = kwargs.get("max_new_tokens", 512)
-        self.temperature = kwargs.get("temperature", 0.01)
-        self.device = kwargs.get("device", "auto")
+        self.model_params = model_params if model_params is not None else {}
+        
+        self.model_config = self.model_params.get("model_config", {})
+        self.generate_config = self.model_params.get("generate_config", {})
         self._load_model()
 
     @track(name="load_hf_model")
@@ -43,15 +44,15 @@ class OpikHFModel(OpikBaseModel):
 
         self.model = self._AutoModelForCausalLM.from_pretrained(
             self.model_id,
-            torch_dtype=self._torch.float16,
-            device_map=self.device
+            torch_dtype=self.model_config.get("dtype", self._torch.float16),
+            device_map=self.model_config.get("device_map", "auto")
         )
 
         self.generator = self._hf_pipeline(
             "text-generation",
             model=self.model,
             tokenizer=self.tokenizer,
-            device_map=self.device
+            device_map=self.model_config.get("device_map", "auto")
         )
 
     def _extract_json_string(self, text: str) -> str:
@@ -70,12 +71,8 @@ class OpikHFModel(OpikBaseModel):
     def generate_string(self, input: str, response_format: Any = None, **kwargs: Any) -> str:
         logger.info(f"\n--- [START GENERATING] ---\n")
 
-        params = {
-            "max_new_tokens": kwargs.get("max_new_tokens", self.max_new_tokens),
-            "temperature": kwargs.get("temperature", 0.01 if response_format else self.temperature),
-            "do_sample": True,
-            "return_full_text": False
-        }
+        params = self.generate_config.copy()  # Start with default generate_config
+        params.update(kwargs)
 
         try:
             response = self.generator(input, **params)
@@ -112,8 +109,8 @@ class OpikHFModel(OpikBaseModel):
 
 class OpikLocalFactory:
     @staticmethod
-    def create_model(provider: str, model_id: str, **kwargs) -> Any:
+    def create_model(provider: str, model_id: str, model_params: Optional[Dict[str, Any]] = None) -> Any:
         if provider == "huggingface":
-            return OpikHFModel(model_id=model_id, **kwargs)
+            return OpikHFModel(model_id=model_id, model_params=model_params)
         else:
             raise ValueError(f"Unsupported local provider: {provider}")
