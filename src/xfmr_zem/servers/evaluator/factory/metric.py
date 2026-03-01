@@ -27,8 +27,8 @@ class ExactMatchMetric(BaseMetric):
 
     def score(self, output: str, reference: str, **kwargs) -> score_result.ScoreResult:
         # Simple exact match logic
-        out_str = str(output).strip()
-        ref_str = str(reference).strip()
+        out_str = str(output).lower().strip()
+        ref_str = str(reference).lower().strip()
         is_match = out_str == ref_str
         
         return score_result.ScoreResult(
