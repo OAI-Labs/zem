@@ -9,31 +9,51 @@ servers:
 pipeline:
   - name: build_ds
     evaluator.build_opik_dataset:
+      data: Random data
       dataset_path: data/MCQ_dataset.json
-      dataset_name: mcq_vbench_testing
+      dataset_name: mcq_vbench_testing_2
       dataset_type: multiple_choice
+      dataset_instruction: "You're a model answering multiple choice questions. Please select the best answer from the options provided. Make sure you respond the answer in the following format: ['char'], where char is the character of the correct answer (placed at the beginning). Do not include any other text in your response."
       use_access_token: True
-      limit: 10
       reset: False
       workspace: default
       project: vbench_debug
       host_url: https://opik.note.transformerlabs.ai/api
-    cache: False
+    cache: True
 
   - name: eval_LM
     evaluator.evaluate:  
       data: $build_ds
-      dataset_name: mcq_vbench_testing
+      dataset_name: mcq_vbench_testing_2
       metrics:
         - name: accuracy
           criteria: "Hãy đo mức độ chính xác của câu trả lời của mô hình dựa trên việc so sánh với đáp án đúng."
         - name: exact_match
+      
+      test_model_engine: huggingface
+      test_model_id: Qwen/Qwen2.5-1.5B-Instruct
+      test_model_params: 
+        generate_config: 
+          max_new_tokens: 512
+          temperature: 0.2
+          top_p: 0.9
+        model_config:
+          dtype: auto
+          device_map: auto
+
+        
+      
+      evaluate_model_engine: local    
+      evaluate_provider: huggingface
+      evaluate_model_id: Qwen/Qwen2.5-1.5B-Instruct
+
+
+      task_type: generative
       workspace: default
       project: vbench_debug
       use_access_token: True
       host_url: https://opik.note.transformerlabs.ai/api
       experiment: "Test MCQ"
-      limit: 2
     cache: False
 
     
