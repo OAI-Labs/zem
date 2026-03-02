@@ -228,7 +228,7 @@ def evaluate(
 
     task_type: str = "generative",     
     metrics: list = None,
-    limit: int = 1,
+    limit: int = None,
     custom_context: list[str] = None,
     project: str = None,
     experiment: str = None,
@@ -248,12 +248,17 @@ def evaluate(
         use_access_token=use_access_token,
     )
 
-    # 2. Get the Model
-    logger.info(f"Initializing Model: {test_model_id} ({test_model_engine})")
-    model = ModelFactory.get_model(test_model_engine, test_model_id, test_model_params)
+    # 2. Define the Task
+    logger.info(f"Initializing Task Runner for task type: {task_type}")
+    task_runner = TaskFactory.get_task(task_type, 
+                                       test_model_engine, 
+                                       test_model_id, 
+                                       test_model_params,
+                                       custom_context=custom_context)
 
     # 2.5 Get Evaluation Model
     logger.info(f"Initializing Evaluation Model: {evaluate_model_id} (Engine: {evaluate_model_engine}, Provider: {evaluate_provider})")
+    
     eval_model = EvaluateModelFactory.get_model(
         engine = evaluate_model_engine,
         provider = evaluate_provider,
@@ -285,18 +290,19 @@ def evaluate(
     logger.info(f"Metrics: {len(metrics)}")
     scoring_metrics = MetricFactory.get_metrics(metrics, model=eval_model)
 
-    # 5. Define the Task
-    task_runner = TaskFactory.get_task(task_type, model, custom_context=custom_context)
+    if (limit is None): limit = len(dataset_items)
+    else: limit = min(limit, len(dataset_items))
 
-    # # 6. Run Opik Evaluation
+    # # 5. Run Opik Evaluation
     logger.info("Starting Opik Evaluation...")
     results = opik_evaluate(
         dataset=dataset,
         task=task_runner.run,
-        nb_samples=limit,
+        nb_samples=min(limit, len(dataset_items)) if limit else len(dataset_items),
         scoring_metrics=scoring_metrics,
         project_name=project,
-        experiment_name=experiment
+        experiment_name=experiment,
+        task_threads=1
     )    
 
 
