@@ -136,11 +136,25 @@ Actual Output (Target):
 2. Return the result strictly in valid JSON format.
 3. Do not include any markdown formatting (like ```json), explanations, or additional text outside the JSON object.
 
-Use exactly the following JSON structure:
+You must strictly follow the exact following JSON format for response (don't response other things):
 {{
   "score": <float>,   // A value between 0.0 and 1.0
   "reason": "<string>" // A concise explanation for the score
 }}
+
+FOR Example:
+Example 1 (for reference only, not to be included in the prompt):
+{{
+    "score": 0.8,
+    "reason": "The actual output is mostly correct but misses some details compared to the expected
+}}
+
+Example 2 (for reference only, not to be included in the prompt):
+{{
+    "score": 0.1,
+    "reason": "The actual output is mostly incorrect and does not match the expected output."
+}}
+
 [/SYSTEM INSTRUCTION]
 """
         try:
