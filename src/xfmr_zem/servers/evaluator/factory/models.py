@@ -1,7 +1,10 @@
 from typing import Any, Optional
 import opik
 from loguru import logger
-
+import sys
+logger.remove()
+logger.add(sys.stderr, level="INFO")
+from vllm import LLM, SamplingParams
 
 class HuggingFaceLM:
     def __init__(self, model_id: str, model_params: dict = None):
@@ -14,6 +17,7 @@ class HuggingFaceLM:
                 "Thiếu dependencies cho local model. "
                 "Hãy cài: pip install 'xfmr-zem[evaluator-local]'"
             )
+        self.engine = "huggingface"
 
         self.model_id = model_id
         self.model_params = model_params if model_params is not None else {}
@@ -24,12 +28,14 @@ class HuggingFaceLM:
         self.model = AutoModelForCausalLM.from_pretrained(
             model_id,
             torch_dtype=self.model_config.get("dtype", "auto"),
-            device_map=self.model_config.get("device_map", "auto")
+            device_map=self.model_config.get("device_map", "auto"),
+            cache_dir=self.model_config.get("cache_dir", None)
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_id,
             torch_dtype=self.model_config.get("dtype", "auto"),
-            device_map=self.model_config.get("device_map", "auto")
+            device_map=self.model_config.get("device_map", "auto"),
+            cache_dir=self.model_config.get("cache_dir", None)
         )
         logger.info(f"Model {model_id} loaded successfully.")
 
@@ -80,13 +86,16 @@ class HuggingFaceLM:
 
 class vLLM:
     def __init__(self, model_id: str, model_params: dict = None):
-        try:
-            from vllm import LLM, SamplingParams
-        except ImportError as exc:
-            raise ImportError(
-                "Thiếu dependencies cho local vLLM. "
-                "Hãy cài: pip install 'vllm'"
-            ) from exc
+        
+        # try:
+        # except:
+        #     raise ImportError(
+        #         "Thiếu dependencies cho vLLM model. "
+        #         "Hãy cài: pip install 'xfmr-zem[evaluator-vllm]'"
+        #     )
+
+        self._LLM = LLM
+        self._SamplingParams = SamplingParams
 
         self.model_id = model_id
         self.model_params = model_params or {}
@@ -95,10 +104,13 @@ class vLLM:
         self.generate_config = self.model_params.get("generate_config", {})
 
         logger.info(f"Loading vLLM model: {model_id}")
-        self.llm = LLM(
+        self.llm = self._LLM(
             model=model_id,
             **self.model_config
         )
+
+        logger.info(f"Finished Loading vLLM model: {model_id}")
+
 
     def _build_prompt(self, input_text: str, system_prompt: Optional[str]) -> str:
         parts = []
@@ -109,14 +121,24 @@ class vLLM:
 
     @opik.track
     def generate(self, input_text: str, system_prompt: Optional[str] = None) -> str:
-        prompt = self._build_prompt(input_text, system_prompt or "You are a helpful assistant.")
-        sampling_params = SamplingParams(**self.model_params)
-        stop_sequences = self.model_params.get("stop_sequences")
-        results = self.llm.generate(
-            prompt=prompt,
-            sampling_params=sampling_params,
-            stop_sequences=stop_sequences
-        )
+        try:
+            messages = [
+                {"role": "system", "content": system_prompt or "You are a helpful assistant."},
+                {"role": "user", "content": input_text}
+            ]
+            sampling_params = self._SamplingParams(**self.generate_config)
+            
+            results = self.llm.chat(
+                messages=messages,
+                sampling_params=sampling_params,
+                use_tqdm=True
+            )
+            # for result in results:
+            #     logger.info(f"Generated output: {result.outputs[0].text}")
+
+        except Exception as e:
+            logger.error(f"vLLM generation failed: {e}")
+            return ""
 
         output_text = ""
         for result in results:
