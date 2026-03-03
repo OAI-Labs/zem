@@ -1,3 +1,15 @@
+## [0.3.12] - 2026-03-03
+
+### Added
+- **Evaluator Server**: New MCP server for LLM evaluation with Opik integration
+  - Support for **vLLM** and **HuggingFace** inference engines
+  - **LLM-as-Judge** pattern with custom metrics and prompts
+  - Dataset management (multiple-choice, text generation)
+  - Opik authentication via access token (Keycloak) or API key
+
+### Changed
+- Added vLLM dependency as optional extra `[evaluator-vllm]`
+
 ## [0.3.11] - 2026-02-25
 
 ### Changed
