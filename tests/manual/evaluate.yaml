@@ -4,27 +4,70 @@ correlator: xfmr-zem
 
 servers:
   evaluator: servers/evaluator
-  evaluator: servers/evaluator
 
 
 pipeline:
-  - name: build_ds
-    evaluator.build_opik_dataset:
-      dataset_path: data/TextGen_dataset.json
-      dataset_name: textgen
-      dataset_type: text_generation
-      limit: 10
-      reset: False
-    cache: True
+  # - name: build_ds
+  #   evaluator.build_opik_dataset:
+  #     data: Random data
+  #     dataset_path: data/MCQ_dataset.json
+  #     dataset_name: mcq_vbench_testing_2
+  #     dataset_type: multiple_choice
+  #     dataset_instruction: "You're a model answering multiple choice questions. Please select the best answer from the options provided. Make sure you respond the answer in the following format: ['char'], where char is the character of the correct answer (placed at the beginning). Do not include any other text in your response."
+  #     use_access_token: True
+  #     reset: False
+  #     workspace: default
+  #     project: vbench_debug
+  #     host_url: https://opik.note.transformerlabs.ai/api
+  #   cache: True
 
   - name: eval_LM
-    evaluator.evaluate:  
-      data: $build_ds
-      dataset_name: textgen
-      metrics:
-        - "Hãy đo mức độ thân thiện của đoạn văn sau"
-        - "Hallucination"
+    evaluator.evaluate_generative_task:  
+      data: none
+      dataset_name: multihop-qa-dataset-v5
+      metrics: #Metric custom
+        - name: semantic accuracy
+          criteria: "Hãy đo mức độ chính xác của câu trả lời của mô hình dựa trên việc so sánh output với reference."
+        - name: exact_match
+      
+      test_model_engine: vllm #Model engine for testing.
+      test_model_id: Qwen/Qwen2.5-3B-Instruct #Model ID for testing model.  
+      test_model_params: #Parameters for testing model
+        generate_config: #Sampling Parameters for evaluation model 
+          temperature: 0.15
+          top_p: 0.9
+          max_tokens: 1024
+        model_config: 
+          dtype: auto
+          trust_remote_code: True
+          download_dir: /LLM_32T/pretrained_weights/taink/vllm_cache  #(Download_dir for vllm)
+          # cache_dir: /LLM_32T/pretrained_weights/taink/huggingface_cache #(Cache Dir for HuggingFace)
+          gpu_memory_utilization: 0.15
 
+        
+      
+      evaluate_model_engine: local    
+      evaluate_provider: vllm #Model engine for evaluation.
+      evaluate_model_id:  Qwen/Qwen2.5-3B-Instruct #Model ID for evaluation model.
+      limit: 100  #Number of samples to evaluate
+      evaluate_model_params: #Parameters for evaluation model
+        generate_config: #Sampling Parameters for evaluation model
+          temperature: 0.2
+          top_p: 0.9
+          max_tokens: 1024
+        model_config:
+          dtype: auto
+          download_dir: /LLM_32T/pretrained_weights/taink/vllm_cache #(Download_dir for vllm)
+          # cache_dir: /LLM_32T/pretrained_weights/taink/huggingface_cache #(Cache Dir for HuggingFace)
+          gpu_memory_utilization: 0.2
+
+
+      task_type: generative
+      workspace: default
+      project: vbench_debug
+      use_access_token: True
+      host_url: https://opik.note.transformerlabs.ai/api
+      experiment: "Test MCQ"
     cache: False
 
     

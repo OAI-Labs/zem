@@ -1,8 +1,9 @@
 from typing import List, Optional, Any
 import json
-import re
+from string import Formatter
 from opik.evaluation.models import OpikBaseModel
 from pydantic import BaseModel, Field
+from xfmr_zem.servers.evaluator.factory.prompt.evaluate_prompt import DEFAULT_EVALUATE_PROMPT
 from opik.evaluation.metrics import (
     Hallucination,
     AnswerRelevance,
@@ -27,8 +28,8 @@ class ExactMatchMetric(BaseMetric):
 
     def score(self, output: str, reference: str, **kwargs) -> score_result.ScoreResult:
         # Simple exact match logic
-        out_str = str(output).strip()
-        ref_str = str(reference).strip()
+        out_str = str(output).lower().strip()
+        ref_str = str(reference).lower().strip()
         is_match = out_str == ref_str
         
         return score_result.ScoreResult(
@@ -94,13 +95,25 @@ class LevenshteinRatioMetric(BaseMetric):
         return self.metric.score(**kwargs)
 
 class CustomMetricResponse(BaseModel):
-    score: float = Field(description="The score between 0.0 and 1.0")
+    score: int = Field(description="The score between 0 and 100")
     reason: str = Field(description="The reason for the score")
 
 class CustomMetric(BaseMetric):
-    def __init__(self, name: str, model: Any):
+    REQUIRED_PROMPT_KEYS = {
+        "name",
+        "criteria",
+        "input",
+        "context",
+        "expected_output",
+        "output",
+    }
+
+    def __init__(self, name: str, criteria: str, judge_prompt: str = None, model: Any = None):
         self.name = name
+        self.criteria = criteria
         self.model = model
+        self.judge_prompt = judge_prompt or DEFAULT_EVALUATE_PROMPT
+        self._validate_prompt_placeholders()
 
     def score(self, input: str, output: str, context: Any = None, expected_output: str = None, **kwargs) -> score_result.ScoreResult:
         # Prepare context string
@@ -110,37 +123,20 @@ class CustomMetric(BaseMetric):
         elif context:
             context_str = str(context)
 
-        prompt = f"""[SYSTEM INSTRUCTION]
-You are an expert AI evaluator. Your task is to assess the quality of the 'Actual Output' based on the provided 'Input', 'Context', and 'Expected Output'.
+        prompt_kwargs = {
+            "name": self.name,
+            "criteria": self.criteria,
+            "input": input,
+            "context": context_str,
+            "expected_output": expected_output or "",
+            "output": output,
+        }
+        missing_keys = self.REQUIRED_PROMPT_KEYS - prompt_kwargs.keys()
+        if missing_keys:
+            raise ValueError(f"Missing required custom metric prompt keys: {sorted(missing_keys)}")
 
-Metric Name: {self.name}
-Scoring Scale: 0.0 (Worst) to 1.0 (Best)
+        prompt = self.judge_prompt.format(**prompt_kwargs)
 
-[DATA TO EVALUATE]
-Input:
-{input}
-
-Context:
-{context_str}
-
-Expected Output (Reference):
-{expected_output}
-
-Actual Output (Target):
-{output}
-
-[OUTPUT REQUIREMENT]
-1. Evaluate the 'Actual Output' objectively.
-2. Return the result strictly in valid JSON format.
-3. Do not include any markdown formatting (like ```json), explanations, or additional text outside the JSON object.
-
-Use exactly the following JSON structure:
-{{
-  "score": <float>,   // A value between 0.0 and 1.0
-  "reason": "<string>" // A concise explanation for the score
-}}
-[/SYSTEM INSTRUCTION]
-"""
         try:
             result = self.model.generate_string(prompt, response_format=CustomMetricResponse)
             # Extract JSON using custom logic
@@ -165,31 +161,79 @@ Use exactly the following JSON structure:
             reason=reason
         )
 
+    def _validate_prompt_placeholders(self):
+        formatter = Formatter()
+        placeholders = {
+            field_name
+            for _, field_name, _, _ in formatter.parse(self.judge_prompt)
+            if field_name
+        }
+        missing = self.REQUIRED_PROMPT_KEYS - placeholders
+        if missing:
+            raise ValueError(
+                f"Judge prompt is missing placeholders for required keys: {sorted(missing)}"
+            )
+
 class MetricFactory:
     """
-    Factory to retrieve a list of Opik metrics based on the list of metric names.
+    Factory to retrieve a list of Opik metrics from structured input.
     """
-    
+
     @staticmethod
-    def get_metrics(metric_names: List[str], model: Optional[Any] = None) -> List[BaseMetric]:
+    def get_metrics(metric_specs: List[Any], model: Optional[Any] = None) -> List[BaseMetric]:
+        valid_metrics = {
+            "exact_match": lambda: ExactMatchMetric(),
+            "hallucination": lambda: HallucinationMetric(model=model),
+            "answer_relevance": lambda: AnswerRelevanceMetric(model=model),
+            "context_recall": lambda: ContextRecallMetric(model=model),
+            "context_precision": lambda: ContextPrecisionMetric(model=model),
+            "moderation": lambda: ModerationMetric(model=model),
+            "g_eval": lambda: GEvalMetric(model=model),
+            "levenshtein_ratio": lambda: LevenshteinRatioMetric(),
+        }
         metrics = []
-        for name in metric_names:
-            if name == "exact_match":
-                metrics.append(ExactMatchMetric())
-            elif name == "hallucination":
-                metrics.append(HallucinationMetric(model=model))
-            elif name == "answer_relevance":
-                metrics.append(AnswerRelevanceMetric(model=model))
-            elif name == "context_recall":
-                metrics.append(ContextRecallMetric(model=model))
-            elif name == "context_precision":
-                metrics.append(ContextPrecisionMetric(model=model))
-            elif name == "moderation":
-                metrics.append(ModerationMetric(model=model))
-            elif name == "g_eval":
-                metrics.append(GEvalMetric(model=model))
-            elif name == "levenshtein_ratio":
-                metrics.append(LevenshteinRatioMetric())
-            else:
-                metrics.append(CustomMetric(name=name, model=model))
+        valid_metric_names = "\n".join(sorted(valid_metrics.keys()))
+
+        for spec in metric_specs:
+            if isinstance(spec, str):
+                spec = {"name": spec}
+
+            if not isinstance(spec, dict):
+                raise ValueError(
+                    "Metric entry must be a dictionary with at least a 'name' key."
+                )
+
+            name = spec.get("name")
+            if not name:
+                raise ValueError(
+                    "Metric dictionary missing required 'name' key."
+                )
+
+            criteria = spec.get("criteria")
+            judge_prompt = spec.get("judge_prompt")
+
+            if criteria:
+                metrics.append(CustomMetric(name=name, criteria=criteria, judge_prompt=judge_prompt, model=model))
+                continue
+
+            factory = valid_metrics.get(name)
+            if not factory:
+                raise ValueError(
+                    f"Metric '{name}' is invalid; add description or modify name to match valid metrics:\n{valid_metric_names}"
+                )
+
+            metrics.append(factory())
+
         return metrics
+
+if (__name__ == "__main__"):
+    list_metric = [
+        {"name": "exact_match"},
+        {"name": "accuracy",
+         "criteria": "Scores how accurate the response is compared to the expected output."},
+        {"name": "bruh"}
+    ]
+
+    metrics = MetricFactory.get_metrics(list_metric)
+    for metric in metrics:
+        print(metric.name)

@@ -1,15 +1,27 @@
 from typing import Any, Dict, Optional, List
-import logging
+from loguru import logger
+import sys
+from .models import ModelFactory
 
-logger = logging.getLogger(__name__)
+
+logger.remove()
+logger.add(sys.stderr, level="INFO")
 
 class GenerativeTask:
     """
     GenerativeTask is responsible for executing the model on the input to produce the result.
     It isolates the execution logic and standardizes the output format.
     """
-    def __init__(self, model: Any, custom_context: Optional[List[str]] = None):
-        self.model = model
+    def __init__(self, 
+                 model_engine, 
+                 model_id, 
+                 model_params: dict = None, 
+                 custom_context: Optional[List[str]] = None):
+        self.model_engine = model_engine
+        self.model_id = model_id
+        self.model_params = model_params or {}
+
+        self.model = ModelFactory.get_model(model_engine, model_id, model_params)
         self.custom_context = custom_context or []
 
     def run(self, item: Dict[str, Any]) -> Dict[str, Any]:
@@ -49,10 +61,15 @@ class GenerativeTask:
             "reference": reference,  # Often used as an alias for reference
         }
 
+
 class TaskFactory:
     @staticmethod
-    def get_task(task_type: str, model: Any, custom_context: Optional[List[str]] = None) -> Any:
+    def get_task(task_type: str, 
+                 model_engine: str,
+                 model_id: str, 
+                 model_params: dict = None,
+                 custom_context: Optional[List[str]] = None) -> Any:
         if task_type in ["generative"]:
-            return GenerativeTask(model, custom_context)
+            return GenerativeTask(model_engine, model_id, model_params, custom_context)
         else:
             raise ValueError(f"Unknown task type: {task_type}")

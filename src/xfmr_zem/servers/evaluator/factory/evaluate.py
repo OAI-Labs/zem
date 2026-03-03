@@ -14,6 +14,7 @@ class EvaluateModelFactory:
         engine: str, 
         model_id: Optional[str] = None, 
         provider: Optional[str] = None, 
+        model_params: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> Any:
         """
@@ -38,7 +39,12 @@ class EvaluateModelFactory:
             logger.info(model_id, provider)
             if not model_id or not provider:
                 raise ValueError("Engine 'local' yêu cầu phải có 'model_id' và 'provider'")
-            return OpikLocalFactory.create_model(provider=provider, model_id=model_id, **kwargs)
+            return OpikLocalFactory.create_model(
+                provider=provider,
+                model_id=model_id,
+                model_params=model_params,
+                **kwargs
+            )
             
         # 3. Lỗi nếu không tìm thấy engine
         else:

@@ -1,0 +1,1 @@
+DEFAULT_GENERATE_SYSTEM_PROMPT="You are a helpful and precise assistant for checking the quality of the answer."

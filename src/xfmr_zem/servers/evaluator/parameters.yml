@@ -1,21 +1,37 @@
 evaluate:
-    dataset_name: "mmlu"
-    test_model_engine:  "huggingface" #Model for testing
-    test_model_id: "Qwen/Qwen2.5-3B-Instruct"
-    evaluate_model_engine: "local"     #Model for evaluation
-    evaluate_provider: "huggingface"
-    evaluate_model_id: "Qwen/Qwen2.5-3B-Instruct"
-    task_type: "generative"    #Other infos
-    project_name: "Evaluate LM"
-    limit: 1
-    metrics: 
-        - "context_recall"
-        - "levenshtein_ratio"
-    experiment_name: "Default Run"
+  dataset_name: "mmlu"
+  test_model_engine: "huggingface"
+  test_model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+
+  evaluate_model_engine: "local"
+  evaluate_provider: "huggingface"
+  evaluate_model_id: "Qwen/Qwen2.5-1.5B-Instruct"
+
+  task_type: "generative"
+  metrics: 
+    - name: "accuracy"
+      criteria: "Hãy đo mức độ chính xác của câu trả lời của mô hình dựa trên việc so sánh với đáp án đúng."
+    - name: "exact_match"
+  limit: 1
+  custom_context: 
+    - You are a helpful and precise assistant for checking the correctness of the answer. Please answer with "correct" if the answer is correct, and "incorrect" if the answer is incorrect.
+  project: Evaluate LM
+  experiment: Run LM Evaluation
+  workspace: default
+  host_url: "YOUR HOST URL goes here"
+  api_key: "YOUR API KEY goes here"
+  use_access_token: false
 
 build_opik_dataset:
-    dataset_path: "data/MCQ_dataset.json"
-    dataset_name: "mmlu"
-    dataset_type: "multiple_choice"
-    limit: 10
-    reset: False
+  dataset_path: "data/MCQ_dataset.json"
+  dataset_name: "mmlu"
+  dataset_type: "multiple_choice"
+  dataset_instruction: "You are a AI model"
+  dataset_index: 1
+  use_access_token: false
+  workspace: "default"
+  project: "Evaluate LM"
+  limit: 1
+  reset: false
+  host_url: "Your Host_URL goes here"  # Host URL in case not set in env 
+  api_key: "Your API Key goes here"   # API KEY in case not set in env
