@@ -213,7 +213,7 @@ def build_opik_dataset(
 
 
 @server.tool()
-def evaluate(
+def evaluate_generative_task(
     data: Any,
     dataset_name: str = "mmlu",
 
