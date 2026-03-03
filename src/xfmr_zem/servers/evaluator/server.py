@@ -99,8 +99,6 @@ def setup_opik_client(
         access_token = get_access_token()
         api_key = f"Bearer {access_token}"
 
-    # logger.info(f"your host_url: {host_url}")
-    # logger.info(f"your api_key: {api_key}")
 
     if not os.environ.get("OPIK_API_KEY") and api_key:
         os.environ["OPIK_API_KEY"] = str(api_key)

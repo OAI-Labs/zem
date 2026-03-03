@@ -4,6 +4,7 @@ from loguru import logger
 import sys
 logger.remove()
 logger.add(sys.stderr, level="INFO")
+from xfmr_zem.servers.evaluator.factory.prompt.generate_prompt import DEFAULT_GENERATE_SYSTEM_PROMPT
 
 class HuggingFaceLM:
     def __init__(self, model_id: str, model_params: dict = None):
@@ -131,22 +132,16 @@ class vLLM:
             results = self.llm.chat(
                 messages=messages,
                 sampling_params=sampling_params,
-                use_tqdm=True
+                use_tqdm=False
             )
-            # for result in results:
-            #     logger.info(f"Generated output: {result.outputs[0].text}")
 
         except Exception as e:
             logger.error(f"vLLM generation failed: {e}")
             return ""
 
-        output_text = ""
-        for result in results:
-            for output in result.outputs:
-                output_text += output.text
-            break
-
-        return output_text.strip()
+        if not results:
+            return ""     
+        return results[0].outputs[0].text.strip()
 
     def __del__(self):
         try:
