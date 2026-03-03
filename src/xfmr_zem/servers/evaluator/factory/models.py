@@ -4,7 +4,6 @@ from loguru import logger
 import sys
 logger.remove()
 logger.add(sys.stderr, level="INFO")
-from vllm import LLM, SamplingParams
 
 class HuggingFaceLM:
     def __init__(self, model_id: str, model_params: dict = None):
@@ -87,12 +86,13 @@ class HuggingFaceLM:
 class vLLM:
     def __init__(self, model_id: str, model_params: dict = None):
         
-        # try:
-        # except:
-        #     raise ImportError(
-        #         "Thiếu dependencies cho vLLM model. "
-        #         "Hãy cài: pip install 'xfmr-zem[evaluator-vllm]'"
-        #     )
+        try:
+            from vllm import LLM, SamplingParams
+        except:
+            raise ImportError(
+                "Thiếu dependencies cho vLLM model. "
+                "Hãy cài: pip install 'xfmr-zem[evaluator-vllm]'"
+            )
 
         self._LLM = LLM
         self._SamplingParams = SamplingParams
