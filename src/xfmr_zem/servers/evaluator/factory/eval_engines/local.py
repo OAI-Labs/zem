@@ -72,6 +72,7 @@ class OpikLocalBaseModel(OpikBaseModel, ABC):
         pass
 
 
+
 class OpikHFModel(OpikLocalBaseModel):
     def __init__(self, model_id: str, model_params: dict, **kwargs):
         # Lazy import: chỉ import khi thực sự cần (evaluator-local extra)
@@ -182,6 +183,11 @@ class OpikVLLMModel(OpikLocalBaseModel):
             break
             
         return output_text.strip()
+    def __del__(self):
+        try:
+            self.llm.shutdown()
+        except Exception:
+            pass
 
 
 class OpikLocalFactory:
