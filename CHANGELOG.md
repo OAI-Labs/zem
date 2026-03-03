@@ -1,3 +1,13 @@
+## [0.4.0] - 2026-03-03
+
+### Added
+- **Evaluator vLLM Support**: Added support for vLLM as a backend for the evaluator server.
+- **LLM as Judge improvements**: Enhanced prompts and support for custom prompt keys in evaluation pipelines.
+- **V-Bench Pipeline**: Integrated evaluation pipeline for V-Bench datasets.
+
+### Changed
+- **Version Bump**: Minor version bump to reflect significant new evaluator features and backends.
+
 ## [0.3.11] - 2026-02-25
 
 ### Changed
