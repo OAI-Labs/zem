@@ -94,7 +94,7 @@ class LevenshteinRatioMetric(BaseMetric):
         return self.metric.score(**kwargs)
 
 class CustomMetricResponse(BaseModel):
-    score: float = Field(description="The score between 0.0 and 1.0")
+    score: int = Field(description="The score between 0 and 100")
     reason: str = Field(description="The reason for the score")
 
 class CustomMetric(BaseMetric):
@@ -112,7 +112,8 @@ class CustomMetric(BaseMetric):
             context_str = str(context)
 
         prompt = f"""[SYSTEM INSTRUCTION]
-You are an expert AI evaluator. Your task is to assess the quality of the 'Actual Output' based on the provided 'Input', 'Context', and 'Expected Output'.
+You are an expert AI evaluator. 
+Your task is to assess the quality of the 'Actual Output' based on the provided 'Input', 'Context', and 'Expected Output'.
 
 Metric Name: {self.name}
 Metric Criteria: {self.criteria}
