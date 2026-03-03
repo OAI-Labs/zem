@@ -7545,7 +7545,7 @@ wheels = [
 
 [[package]]
 name = "xfmr-zem"
-version = "0.3.11"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
