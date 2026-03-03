@@ -129,7 +129,7 @@ class MultipleChoiceDataset(BaseDataset):
             "input": final_prompt,
             "context": context_list,
             "reference": final_output,
-            "index": index
+            "order": index
         }
 
 
@@ -171,7 +171,7 @@ class TextGenerationDataset(BaseDataset):
             "input": final_prompt,
             "context": context_list,
             "reference": str(reference),
-            "index": index
+            "order": index
         }
 
 
